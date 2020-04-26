@@ -1,0 +1,65 @@
+Transform: [Template]
+
+Parameters:
+  GitHubUser:
+    Type: String
+    Default: ggiallo28
+  RepositoryName:
+    Type: String
+    Default: template-macro
+  BranchName:
+    Type: String
+    Default: master
+  GitHubToken:
+    Type: String
+    Default: '3323ce281edb2c489c31aa7a2366b7d5045ac9aa'
+  BucketName:
+    Type: String
+    Default: audioposts-site
+  TemplateKey:
+    Type: String
+    Default: test/sns-topics.yaml
+  #Environment:
+  #  Type: String
+  #  Default: test    
+
+Resources:
+  SNSTopicNested:
+    Type: Template::Git
+    Properties:
+      Mode: Nested
+      Provider: GitHub
+      Repo: !Ref RepositoryName
+      Branch: !Ref BranchName
+      Owner: !Ref GitHubUser
+      OAuthToken: !Ref GitHubToken
+      Path: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-github-nested-stack'
+        #Environment: !Ref Environment
+
+  SNSTopiInline:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Codecommit
+      Repo: !Ref RepositoryName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-codecommit-inline-stack'
+        #Environment: !Ref Environment
+
+  SNSTopicS3:
+    Type: Template::S3
+    Properties:
+      Mode: Inline
+      Provider: S3
+      Bucket: !Ref BucketName
+      Key: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-s3-inline-stack'
+        #Environment: !Ref Environment
+
+
+        ##
