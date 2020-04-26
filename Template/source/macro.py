@@ -125,6 +125,7 @@ def handle_template(request_id, template, params, region):
 
           if "Mode" in resource:
               del resource["Mode"]
+              
   print(new_template.to_yaml())
 
   return template
