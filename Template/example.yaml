@@ -1,18 +1,18 @@
 Transform: [Template]
 
 Parameters:
-  GitHubUser:
-    Type: String
-    Default: ggiallo28
+  #GitHubUser:
+  #  Type: String
+  #  Default: ggiallo28
   RepositoryName:
     Type: String
     Default: template-macro
   BranchName:
     Type: String
     Default: master
-  GitHubToken:
-    Type: String
-    Default: ''
+  #GitHubToken:
+  #  Type: String
+  #  Default: ''
   BucketName:
     Type: String
     Default: audioposts-site
@@ -21,21 +21,24 @@ Parameters:
     Default: test/sns-topics.yaml
   Environment:
     Type: String
-    Default: test    
+    Default: test
+
+Conditions: 
+  CreateProdResources: !Equals [ !Ref Environment, prod ]
 
 Resources:
-  SNSTopicNested:
+
+  SNSTopiInlineCondition:
     Type: Template::Git
+    Condition: CreateProdResources
     Properties:
-      Mode: Nested
-      Provider: GitHub
+      Mode: Inline
+      Provider: Codecommit
       Repo: !Ref RepositoryName
       Branch: !Ref BranchName
-      Owner: !Ref GitHubUser
-      OAuthToken: !Ref GitHubToken
       Path: !Ref TemplateKey
       Parameters:
-        Name: 'sns-topic-template-github-nested-stack'
+        Name: 'sns-topic-template-codecommit-inline-stack'
         Environment: !Ref Environment
 
   SNSTopiInline:
@@ -61,5 +64,32 @@ Resources:
         Name: 'sns-topic-template-s3-inline-stack'
         Environment: !Ref Environment
 
+  SNSTopicNested:
+    Type: Template::Git
+    Properties:
+      Mode: Nested
+      #Provider: Github
+      #Repo: !Ref RepositoryName
+      #Branch: !Ref BranchName
+      #Owner: !Ref GitHubUser
+      #OAuthToken: !Ref GitHubToken
+      #Path: !Ref TemplateKey
+      Provider: Codecommit
+      Repo: !Ref RepositoryName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-github-nested-stack'
+        Environment: !Ref Environment
+      NotificationARNs:
+        - !GetAtt SNSTopicS3.UrgentPriorityAlarm
+      Tags: 
+        - Key: Environment
+          Value: !Ref Environment
+      TimeoutInMinutes: 1
+      TemplateBucket: !Ref BucketName
+      TemplateKey: !Ref TemplateKey
+
+#Outputs:
 
         ##

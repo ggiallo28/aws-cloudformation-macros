@@ -1,0 +1,194 @@
+---
+Conditions:
+  CreateProdResources:
+    Fn::Equals:
+    - Ref: Environment
+    - prod
+Description: This template is the result of the merge.   SNS Topics for alarms
+Outputs:
+  HighPriorityAlarm:
+    Description: High priority SNS topic ARN
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-high-${Environment}"
+    Value:
+      Ref: HighPriorityAlarm
+  LowPriorityAlarm:
+    Description: Low priority SNS topic ARN
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-low-${Environment}"
+    Value:
+      Ref: LowPriorityAlarm
+  MediumPriorityAlarm:
+    Description: Medium priority SNS topic ARN
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-medium-${Environment}"
+    Value:
+      Ref: MediumPriorityAlarm
+  UrgentPriorityAlarm:
+    Description: Urgent priority SNS topic ARN
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-urgent-${Environment}"
+    Value:
+      Ref: UrgentPriorityAlarm
+Parameters:
+  BranchName:
+    Default: master
+    Type: String
+  BucketName:
+    Default: audioposts-site
+    Type: String
+  Environment:
+    Default: test
+    Type: String
+  RepositoryName:
+    Default: template-macro
+    Type: String
+  TemplateKey:
+    Default: test/sns-topics.yaml
+    Type: String
+Resources:
+  HighPriorityAlarm:
+    Properties:
+      DisplayName:
+        Fn::Sub: "${Name}-High-Priority-Alarm-${Environment}"
+      Subscription:
+      - Endpoint:
+          Ref: SupportEmail
+        Protocol: email
+      TopicName:
+        Fn::Sub: "${Name}-High-Priority-Alarm-${Environment}"
+    Type: AWS::SNS::Topic
+  LowPriorityAlarm:
+    Properties:
+      DisplayName:
+        Fn::Sub: "${Name}-Low-Priority-Alarm-${Environment}"
+      Subscription:
+      - Endpoint:
+          Ref: SupportEmail
+        Protocol: email
+      TopicName:
+        Fn::Sub: "${Name}-Low-Priority-Alarm-${Environment}"
+    Type: AWS::SNS::Topic
+  MediumPriorityAlarm:
+    Properties:
+      DisplayName:
+        Fn::Sub: "${Name}-Medium-Priority-Alarm-${Environment}"
+      Subscription:
+      - Endpoint:
+          Ref: SupportEmail
+        Protocol: email
+      TopicName:
+        Fn::Sub: "${Name}-Medium-Priority-Alarm-${Environment}"
+    Type: AWS::SNS::Topic
+  NestedStackSNSTopicNested:
+    Properties:
+      NotificationARNs:
+      - Fn::GetAtt:
+        - SNSTopicS3
+        - UrgentPriorityAlarm
+      Parameters:
+        Environment:
+          Ref: Environment
+        Name: sns-topic-template-github-nested-stack
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://s3-
+          - Ref: AWS::Region
+          - ".amazonaws.com/"
+          - Ref: BucketName
+          - "/"
+          - Ref: TemplateKey
+      TimeoutInMinutes: 1
+    Type: AWS::CloudFormation::Stack
+  SNSTopiInline:
+    Properties:
+      Branch:
+        Ref: BranchName
+      Mode: Inline
+      Parameters:
+        Environment:
+          Ref: Environment
+        Name: sns-topic-template-codecommit-inline-stack
+      Path:
+        Ref: TemplateKey
+      Provider: Codecommit
+      Repo:
+        Ref: RepositoryName
+    Type: Template::Git
+  SNSTopiInlineCondition:
+    Condition: CreateProdResources
+    Properties:
+      Branch:
+        Ref: BranchName
+      Mode: Inline
+      Parameters:
+        Environment:
+          Ref: Environment
+        Name: sns-topic-template-codecommit-inline-stack
+      Path:
+        Ref: TemplateKey
+      Provider: Codecommit
+      Repo:
+        Ref: RepositoryName
+    Type: Template::Git
+  SNSTopicNested:
+    Properties:
+      Branch:
+        Ref: BranchName
+      Mode: Nested
+      NotificationARNs:
+      - Fn::GetAtt:
+        - SNSTopicS3
+        - UrgentPriorityAlarm
+      Parameters:
+        Environment:
+          Ref: Environment
+        Name: sns-topic-template-github-nested-stack
+      Path:
+        Ref: TemplateKey
+      Provider: Codecommit
+      Repo:
+        Ref: RepositoryName
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+      TemplateBucket:
+        Ref: BucketName
+      TemplateKey:
+        Ref: TemplateKey
+      TimeoutInMinutes: 1
+    Type: Template::Git
+  SNSTopicS3:
+    Properties:
+      Bucket:
+        Ref: BucketName
+      Key:
+        Ref: TemplateKey
+      Mode: Inline
+      Parameters:
+        Environment:
+          Ref: Environment
+        Name: sns-topic-template-s3-inline-stack
+      Provider: S3
+    Type: Template::S3
+  UrgentPriorityAlarm:
+    Properties:
+      DisplayName:
+        Fn::Sub: "${Name}-Urgent-Priority-Alarm-${Environment}"
+      Subscription:
+      - Endpoint:
+          Ref: SupportEmail
+        Protocol: email
+      TopicName:
+        Fn::Sub: "${Name}-Urgent-Priority-Alarm-${Environment}"
+    Type: AWS::SNS::Topic

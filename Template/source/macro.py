@@ -17,12 +17,14 @@ import boto3
 from cfn_flip import flip
 import json
 import git
+from troposphere import cloudformation, Tags, Join, Ref
 from utils import *
 
 PREFIX = "Template::"
 
 LAMBDA_ARN = os.environ["LAMBDA_ARN"] if "LAMBDA_ARN" in os.environ else "__main__"
 s3 = boto3.client('s3')
+cm = boto3.client('codecommit')
 
 def get_param(name, properties, params):
     value = properties.get(name)
@@ -63,16 +65,12 @@ def github_import(request_id, name, properties, params, region):
 def codecommit_import(request_id, name, properties, params, region):
     repo = get_param('Repo', properties, params)
     branch = get_param('Branch', properties, params)
+    branch = 'master' if branch is None else branch
     path = get_param('Path', properties, params)
 
-    clone_dir = "/tmp/" + request_id + "/codecommit"
-    if not os.path.exists(clone_dir + "/" + repo):
-        repo_url =  "https://git-codecommit.{}.amazonaws.com/v1/repos/{}".format(region, repo)
-        git.Git(clone_dir).clone(repo_url)
 
-    file = clone_dir + "/" + repo + "/" + path
-    with open(file) as f:
-        document = json.loads(flip(f.read()))   
+    response = cm.get_file(repositoryName=repo, commitSpecifier = branch,  filePath=path)
+    document = json.loads(flip(response['fileContent']))  
 
     return document
 
@@ -82,14 +80,12 @@ switcher = {
     'github' : github_import
 }
 
-def load_json(document):
-    pass
-
 def handle_template(request_id, template, params, region):
   tp_template = TemplateLoader.loads(template)
   new_template = TemplateLoader.init()
 
   for name, resource in template.get("Resources", {}).items():
+      print(name, resource)
       if resource["Type"].startswith(PREFIX):
           properties = resource.get("Properties", {})
 
@@ -102,35 +98,32 @@ def handle_template(request_id, template, params, region):
               if "codecommit" in properties["Provider"].lower():
                   model = switcher['codecommit'](request_id, name, properties, params, region) 
           
-          tp_model = TemplateLoader.loads(model, prefix=name)
-          
+          tp_model = TemplateLoader.loads(model).update_prefix(name)
           mode = properties.get("Mode", "Inline")
-          if mode == "Inline":
+          parameters = properties.get("Parameters", {})
+
+          if mode.lower() == "inline":
             new_template += tp_model
+          if mode.lower() == "nested":
+            bucket = tp_template.resources[name].properties['TemplateBucket']
+            key = tp_template.resources[name].properties['TemplateKey']
+            nested_stack = cloudformation.Stack(title='NestedStack'+name)
+            nested_stack.NotificationARNs = tp_template.resources[name].properties['NotificationARNs']
+            nested_stack.Parameters = tp_template.resources[name].properties['Parameters']
+            nested_stack.Tags = tp_template.resources[name].properties['Tags']
+            nested_stack.TemplateURL = Join("",["https://s3-", Ref("AWS::Region"), ".amazonaws.com/", bucket, "/", key])
+            nested_stack.TimeoutInMinutes = tp_template.resources[name].properties['TimeoutInMinutes']
+            
+            new_template.add_resource(nested_stack)
 
+  new_template.parameters = tp_template.parameters
 
-          #parameters = properties.get("Parameters")    
-          #values = {'Values': properties.get("Static", []) + properties.get("Dynamic", [])}
-          #resource.update({
-          #    "Type": "Custom::Template",
-          #    "Version": "1.0",
-          #    "Properties": {
-          #        "ServiceToken": LAMBDA_ARN,
-#         #           "Mode": resource.get("Mode", ["Create", "Update"]),
-          #        "Action": resource["Type"][len(PREFIX):],
-          #        "Properties": values,
-          #    },
-          #})
-          #print("after", name, resource)
-
-          if "Mode" in resource:
-              del resource["Mode"]
-              
   print(new_template.to_yaml())
 
-  return template
+  return json.loads(new_template.to_json())
 
 def handler(event, context):
+    print(json.dumps(event))
     fragment = event["fragment"]
     status = "success"
 
@@ -147,6 +140,7 @@ def handler(event, context):
 
     #try:
     fragment = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
+
     #except Exception as e:
     #    status = "failure"
 
@@ -175,7 +169,7 @@ if __name__ == "__main__":
       },
       "GitHubToken": {
         "Type": "String",
-        "Default": "3323ce281edb2c489c31aa7a2366b7d5045ac9aa"
+        "Default": ""
       },
       "BucketName": {
         "Type": "String",
@@ -184,22 +178,67 @@ if __name__ == "__main__":
       "TemplateKey": {
         "Type": "String",
         "Default": "test/sns-topics.yaml"
+      },
+      "Environment": {
+        "Type": "String",
+        "Default": "test"
       }
     },
     "Resources": {
-      "SNSTopicNested": {
+      "SNSTopiInline": {
         "Type": "Template::Git",
         "Properties": {
-          "Mode": "Nested",
-          "Provider": "GitHub",
-          "Owner": {
-            "Ref": "GitHubUser"
-          },
+          "Mode": "Inline",
+          "Provider": "Codecommit",
           "Repo": {
             "Ref": "RepositoryName"
           },
           "Branch": {
             "Ref": "BranchName"
+          },
+          "Path": {
+            "Ref": "TemplateKey"
+          },
+          "Parameters": {
+            "Name": "sns-topic-template-codecommit-inline-stack",
+            "Environment": {
+              "Ref": "Environment"
+            }
+          }
+        }
+      },
+      "SNSTopicS3": {
+        "Type": "Template::S3",
+        "Properties": {
+          "Mode": "Inline",
+          "Provider": "S3",
+          "Bucket": {
+            "Ref": "BucketName"
+          },
+          "Key": {
+            "Ref": "TemplateKey"
+          },
+          "Parameters": {
+            "Name": "sns-topic-template-s3-inline-stack",
+            "Environment": {
+              "Ref": "Environment"
+            }
+          }
+        }
+      },
+      "SNSTopicNested": {
+        "Type": "Template::Git",
+        "Properties": {
+          "Mode": "Nested",
+          "Provider": "GitHub",
+          "Repo": {
+            "Ref": "RepositoryName"
+          },
+          "Branch": {
+            "Ref": "BranchName"
+          },
+          "Owner": {
+            "Ref": "GitHubUser"
           },
           "OAuthToken": {
             "Ref": "GitHubToken"
@@ -208,57 +247,44 @@ if __name__ == "__main__":
             "Ref": "TemplateKey"
           },
           "Parameters": {
-            "Name": "sns-topic-template-github-nested-stack"
-          }
-        }
-      },
-      "SNSTopicInline": {
-        "Type": "Template::Git",
-        "Properties": {
-          "Mode": "Inline",
-          "Repo": {
-            "Ref": "RepositoryName"
+            "Name": "sns-topic-template-github-nested-stack",
+            "Environment": {
+              "Ref": "Environment"
+            }
           },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Provider": "Codecommit",
-          "Parameters": {
-            "Name": "sns-topic-template-codecommit-inline-stack"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          }
-        }
-      },
-      "SNSTopicS3": {
-        "Type": "Template::S3",
-        "Properties": {
-          "Mode": "Inline",
-          "Bucket": {
-            "Ref": "BucketName"
-          },
-          "Key": {
-            "Ref": "TemplateKey"
-          },
-          "Provider": "S3",
-          "Parameters": {
-            "Name": "sns-topic-template-s3-inline-stack"
-          }
+          "NotificationARNs": [
+            {
+              "Fn::GetAtt": [
+                "SNSTopicS3",
+                "UrgentPriorityAlarm"
+              ]
+            }
+          ],
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": {
+                "Ref": "Environment"
+              }
+            }
+          ],
+          "TimeoutInMinutes": "1",
+          "TemplateBucket": "audioposts-site"
         }
       }
     }
   },
   "transformId": "831650818513::Template",
-  "requestId": "zcca5cb0f0-78e6-4834-8198-398961421233",
+  "requestId": "32a696b0-19a3-4fc0-84c7-fc3d4ae6846b",
   "region": "us-east-1",
   "params": {},
   "templateParameterValues": {
     "GitHubUser": "ggiallo28",
     "BucketName": "audioposts-site",
     "TemplateKey": "test/sns-topics.yaml",
+    "Environment": "test",
     "RepositoryName": "template-macro",
     "BranchName": "master",
-    "GitHubToken": "3323ce281edb2c489c31aa7a2366b7d5045ac9aa"
+    "GitHubToken": ""
   }
 }, None)

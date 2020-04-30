@@ -1,9 +1,11 @@
-import json
+import json, re
 from troposphere.template_generator import TemplateGenerator
 from troposphere import AWSObject, AWSProperty, Tags
 from troposphere.compat import policytypes
-from troposphere.validators import boolean
+from troposphere.validators import boolean, integer
 from troposphere import Template
+from cfn_flip import flip
+from collections.abc import Iterable 
 
 try:
   basestring
@@ -22,6 +24,11 @@ class Git(AWSObject):
         'OAuthToken': (basestring, False),
         'Path': (basestring, True),
         'Parameters': (dict, False),
+        'NotificationARNs': ([basestring], False),
+        'Tags': ((Tags, list), False),
+        'TimeoutInMinutes': (integer, False),
+        'TemplateBucket': (basestring, False),
+        'TemplateKey': (basestring, False),
     }
 
 class S3(AWSObject):
@@ -32,27 +39,36 @@ class S3(AWSObject):
         'Provider': (basestring, True),
         'Bucket': (basestring, True),
         'Key': (basestring, True),
-        'Parameters': (dict, False)
+        'Parameters': (dict, False),
+        'NotificationARNs': ([basestring], False),
+        'Tags': ((Tags, list), False),
+        'TimeoutInMinutes': (integer, False),
+        'TemplateBucket': (basestring, False)
     }
 
 class TemplateLoader(TemplateGenerator):
-    @staticmethod
-    def loads(json_string, prefix = ""):
-        template = TemplateLoader(json_string, CustomMembers = [S3, Git])
-        if prefix == "":
-            return template
-        else:
-            json_string = json.loads(template._update_prefix(prefix))
-            return TemplateLoader(json_string, CustomMembers = [S3, Git])
+    __create_key = object()
+    
+    @classmethod
+    def loads(cls, json_string):
+        return TemplateLoader(cls.__create_key, json_string, CustomMembers = [S3, Git])
         
-    @staticmethod
+    @classmethod
     def init():
-        empty_template = Template()
-        empty_template.description = "This template is the result of the merge."
-        return TemplateLoader(json.loads(empty_template.to_json()), CustomMembers = [S3, Git])
+        return TemplateLoader.loads({
+            'Description': 'This template is the result of the merge.', 
+            'Resources': {}
+        })
+    
+    def _find_functions(self):
+        return []
 
-    def __init__(self, cf_template, **kwargs):
+    def __init__(self, create_key, cf_template = None, **kwargs):
+        assert(create_key == TemplateLoader.__create_key), \
+            "TemplateLoader objects must be created using TemplateLoader.loads or TemplateLoader.init"
         super(TemplateLoader, self).__init__(cf_template, **kwargs)
+        
+        self.functions = self._find_functions()
         self._to_replace = []
         
     def __iter__(self):
@@ -82,8 +98,26 @@ class TemplateLoader(TemplateGenerator):
             else:
                 self[key] = {**self[key], **other[key]}
         return self
-                
-        
+    
+    def _replace_value(self, value):
+        for src, dst in self._to_replace:
+            value = re.sub('^'+src+'$', dst, value)
+            value = re.sub('\${'+src+'}', '${'+dst+'}', value)
+        return value
+
+    def _rename_references(self, snippet):
+        if type(snippet) in [str, int]:
+            return
+
+        for key in snippet:
+            if type(key) == str\
+                and type(snippet) == dict\
+                    and type(snippet[key]) == str\
+                        and (key.startswith('Fn::') or key in ['Ref','Condition']):         
+                            snippet[key] = self._replace_value(snippet[key])
+            else:
+                self._rename_references(snippet[key] if type(snippet) == dict else key)
+            
     def _update_des(self, prefix, value):
         return '[{}] {}'.format(prefix, value)
 
@@ -91,15 +125,46 @@ class TemplateLoader(TemplateGenerator):
         output = {}
         for k in value:
             output[prefix+k] = value[k]
+            
             pair = (k, prefix+k)
             if not pair in self._to_replace:
                 self._to_replace += [pair]
+                
         return output
     
-    def _update_export(self, prefix, value):
-        pass
+    def _update_export(self, prefix, key, value):
+        if key == 'Fn::Sub':
+            return '{}-{}'.format(prefix, value)
+        elif key == 'Fn::Base64':
+            return value
+        elif key == 'Fn::Cidr':
+            return value
+        elif key == 'Fn::FindInMap':
+            return value
+        elif key == 'Fn::FindInMap':
+            return value
+        elif key == 'Fn::GetAtt':
+            return value
+        elif key == 'Fn::GetAZs':
+            return value
+        elif key == 'Fn::ImportValue':
+            return value
+        elif key == 'Fn::Join':
+            return value
+        elif key == 'Fn::Select':
+            return value
+        elif key == 'Fn::Split':
+            return value
+        elif key == 'Fn::Sub':
+            return value
+        elif key == 'Fn::Transform':
+            return value
+        elif key == 'Ref':
+            return value
+        else:
+            return value
     
-    def _update_prefix(self, prefix):
+    def update_prefix(self, prefix):
         for props in self:
             key, value = props
             if key.startswith('_') or key in ['version', 'transform']:
@@ -108,6 +173,7 @@ class TemplateLoader(TemplateGenerator):
             if key == 'description':
                 if value == '':
                     continue
+                    
                 self[key] = self._update_des(prefix, value)
             else:
                 self[key] = self._update_dict(prefix, value)
@@ -116,17 +182,13 @@ class TemplateLoader(TemplateGenerator):
             if key == 'outputs':
                 for resource in self[key]:
                     try:
-                        export = self[key][resource].properties['Export'].data['Name']
-                        export_key = list(export.keys())[0]
-                        export_value = '{}-{}'.format(prefix, list(export.values())[0])
-    
-                        self[key][resource].properties['Export'].data['Name'][export_key] = export_value
-                    except:
+                        [(export_key, export_val)] = self[key][resource].properties['Export'].data['Name'].items()
+                        self[key][resource].properties['Export'].data['Name'][export_key] =\
+                                self._update_export(prefix, export_key, export_val)
+                    except Exception as e:
                         continue
-                
-        self._to_replace += [(prefix+prefix,prefix)]
-        template_string = self.to_json()
-        for src, dst in self._to_replace:
-            template_string = template_string.replace(src, dst)
+                        
+        template = json.loads(self.to_json())
+        self._rename_references(template)
         
-        return template_string    
+        return TemplateLoader(template, CustomMembers = [S3, Git])    
