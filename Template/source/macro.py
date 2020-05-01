@@ -115,11 +115,16 @@ def handle_template(request_id, template, params, region):
                 else:
                     key = tp_main_template.resources[name].properties['Path']
                 nested_stack = cloudformation.Stack(title='NestedStack'+name)
-                nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
-                nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
-                nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
+                if 'NotificationARNs' in tp_main_template.resources[name].properties:
+                    nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
+                if 'Parameters' in tp_main_template.resources[name].properties:
+                    nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
+                if 'Tags' in tp_main_template.resources[name].properties:
+                    nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
+                if 'TimeoutInMinutes' in tp_main_template.resources[name].properties:
+                    nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
                 nested_stack.TemplateURL = Join("",["https://s3-", Ref("AWS::Region"), ".amazonaws.com/", bucket, "/", key])
-                nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
+
                 new_template.add_resource(nested_stack)
         else:
             new_template.add_resource(tp_main_template.resources[name])
@@ -144,7 +149,7 @@ def handler(event, context):
 
     #try:
     fragment = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
-    print(fragment)
+    print(json.dumps(fragment))
 
     #except Exception as e:
     #    status = "failure"

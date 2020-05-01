@@ -28,18 +28,18 @@ Conditions:
 
 Resources:
 
-  SNSTopiInlineCondition:
-    Type: Template::Git
-    Condition: CreateProdResources
-    Properties:
-      Mode: Inline
-      Provider: Codecommit
-      Repo: !Ref RepositoryName
-      Branch: !Ref BranchName
-      Path: !Ref TemplateKey
-      Parameters:
-        Name: 'sns-topic-template-codecommit-inline-stack'
-        Environment: !Ref Environment
+  #SNSTopiInlineCondition:
+  #  Type: Template::Git
+  #  Condition: CreateProdResources
+  #  Properties:
+  #    Mode: Inline
+  #    Provider: Codecommit
+  #    Repo: !Ref RepositoryName
+  #    Branch: !Ref BranchName
+  #    Path: !Ref TemplateKey
+  #    Parameters:
+  #      Name: 'sns-topic-template-codecommit-inline-stack'
+  #      Environment: !Ref Environment
 
   SNSTopiInline:
     Type: Template::Git
@@ -64,31 +64,31 @@ Resources:
         Name: 'sns-topic-template-s3-inline-stack'
         Environment: !Ref Environment
 
-  SNSTopicNested:
-    Type: Template::Git
-    Properties:
-      Mode: Nested
-      #Provider: Github
-      #Repo: !Ref RepositoryName
-      #Branch: !Ref BranchName
-      #Owner: !Ref GitHubUser
-      #OAuthToken: !Ref GitHubToken
-      #Path: !Ref TemplateKey
-      Provider: Codecommit
-      Repo: !Ref RepositoryName
-      Branch: !Ref BranchName
-      Path: !Ref TemplateKey
-      Parameters:
-        Name: 'sns-topic-template-github-nested-stack'
-        Environment: !Ref Environment
-      NotificationARNs:
-        - !GetAtt SNSTopicS3.UrgentPriorityAlarm
-      Tags: 
-        - Key: Environment
-          Value: !Ref Environment
-      TimeoutInMinutes: 1
-      TemplateBucket: !Ref BucketName
-      TemplateKey: !Ref TemplateKey
+  #SNSTopicNested:
+  #  Type: Template::Git
+  #  Properties:
+  #    Mode: Nested
+  #    #Provider: Github
+  #    #Repo: !Ref RepositoryName
+  #    #Branch: !Ref BranchName
+  #    #Owner: !Ref GitHubUser
+  #    #OAuthToken: !Ref GitHubToken
+  #    #Path: !Ref TemplateKey
+  #    Provider: Codecommit
+  #    Repo: !Ref RepositoryName
+  #    Branch: !Ref BranchName
+  #    Path: !Ref TemplateKey
+  #    Parameters:
+  #      Name: 'sns-topic-template-github-nested-stack'
+  #      Environment: !Ref Environment
+  #    #NotificationARNs:
+  #    #  - !GetAtt SNSTopicS3.UrgentPriorityAlarm
+  #    Tags: 
+  #      - Key: Environment
+  #        Value: !Ref Environment
+  #    TimeoutInMinutes: 1
+  #    TemplateBucket: !Ref BucketName
+  #    TemplateKey: !Ref TemplateKey
 
 #Outputs:
 

@@ -3,7 +3,7 @@ Description: SNS Topics for alarms
 Parameters:
   SupportEmail:
     Type: String
-    Default: "support+18x7@xpeppers.com"
+    Default: "nmsek@hi2.in"
   Name:
     Type: String
   Environment:
