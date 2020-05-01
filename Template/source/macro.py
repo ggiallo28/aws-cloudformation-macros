@@ -68,7 +68,6 @@ def codecommit_import(request_id, name, properties, params, region):
     branch = 'master' if branch is None else branch
     path = get_param('Path', properties, params)
 
-
     response = cm.get_file(repositoryName=repo, commitSpecifier = branch,  filePath=path)
     document = json.loads(flip(response['fileContent']))  
 
@@ -81,46 +80,51 @@ switcher = {
 }
 
 def handle_template(request_id, template, params, region):
-  tp_template = TemplateLoader.loads(template)
-  new_template = TemplateLoader.init()
+    tp_main_template = TemplateLoader.loads(template)
+    new_template = TemplateLoader.init()
+    new_template.parameters = tp_main_template.parameters
 
-  for name, resource in template.get("Resources", {}).items():
-      print(name, resource)
-      if resource["Type"].startswith(PREFIX):
-          properties = resource.get("Properties", {})
+    for name, resource in template.get("Resources", {}).items():
+        if resource["Type"].startswith(PREFIX):
+            properties = resource.get("Properties", {})
 
-          if 's3' in resource["Type"].lower():
-              model = switcher['s3'](request_id, name, properties, params, region)
-          if 'git' in resource["Type"].lower():
-              if "github" in properties["Provider"].lower():
-                  model = switcher['github'](request_id, name, properties, params, region)
-          if 'git' in resource["Type"].lower():
-              if "codecommit" in properties["Provider"].lower():
-                  model = switcher['codecommit'](request_id, name, properties, params, region) 
+            if 's3' in resource["Type"].lower():
+                model = switcher['s3'](request_id, name, properties, params, region)
+            if 'git' in resource["Type"].lower():
+                if "github" in properties["Provider"].lower():
+                    model = switcher['github'](request_id, name, properties, params, region)
+            if 'git' in resource["Type"].lower():
+                if "codecommit" in properties["Provider"].lower():
+                    model = switcher['codecommit'](request_id, name, properties, params, region) 
           
-          tp_model = TemplateLoader.loads(model).update_prefix(name)
-          mode = properties.get("Mode", "Inline")
-          parameters = properties.get("Parameters", {})
+            tp_model = TemplateLoader.loads(model)
+            mode = properties.get("Mode", "Inline")
+            parameters = properties.get("Parameters", {})
 
-          if mode.lower() == "inline":
-            new_template += tp_model
-          if mode.lower() == "nested":
-            bucket = tp_template.resources[name].properties['TemplateBucket']
-            key = tp_template.resources[name].properties['TemplateKey']
-            nested_stack = cloudformation.Stack(title='NestedStack'+name)
-            nested_stack.NotificationARNs = tp_template.resources[name].properties['NotificationARNs']
-            nested_stack.Parameters = tp_template.resources[name].properties['Parameters']
-            nested_stack.Tags = tp_template.resources[name].properties['Tags']
-            nested_stack.TemplateURL = Join("",["https://s3-", Ref("AWS::Region"), ".amazonaws.com/", bucket, "/", key])
-            nested_stack.TimeoutInMinutes = tp_template.resources[name].properties['TimeoutInMinutes']
-            
-            new_template.add_resource(nested_stack)
+            if mode.lower() == "inline":
+                if 'Parameters' in properties:
+                    parameners = properties['Parameters']
+                    tp_model.set_default_parameters(parameters)
+                tp_model.find_relations(to_replace=True, prefix=name)
+                tp_model.del_parameters()
+                new_template += tp_model
+            if mode.lower() == "nested":
+                bucket = tp_main_template.resources[name].properties['TemplateBucket']
+                if 'TemplateKey' in tp_main_template.resources[name].properties:
+                    key = tp_main_template.resources[name].properties['TemplateKey']
+                else:
+                    key = tp_main_template.resources[name].properties['Path']
+                nested_stack = cloudformation.Stack(title='NestedStack'+name)
+                nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
+                nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
+                nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
+                nested_stack.TemplateURL = Join("",["https://s3-", Ref("AWS::Region"), ".amazonaws.com/", bucket, "/", key])
+                nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
+                new_template.add_resource(nested_stack)
+        else:
+            new_template.add_resource(tp_main_template.resources[name])
 
-  new_template.parameters = tp_template.parameters
-
-  print(new_template.to_yaml())
-
-  return json.loads(new_template.to_json())
+    return json.loads(new_template.to_json())
 
 def handler(event, context):
     print(json.dumps(event))
@@ -140,6 +144,7 @@ def handler(event, context):
 
     #try:
     fragment = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
+    print(fragment)
 
     #except Exception as e:
     #    status = "failure"

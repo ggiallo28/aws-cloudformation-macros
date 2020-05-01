@@ -58,7 +58,7 @@ class TemplateLoader(TemplateGenerator):
         return TemplateLoader(cls.__create_key, cls._sub_to_join(json_string), CustomMembers = [S3, Git])
         
     @classmethod
-    def init():
+    def init(cls):
         return TemplateLoader.loads({
             'Description': 'This template is the result of the merge.', 
             'Resources': {}
@@ -169,10 +169,10 @@ class TemplateLoader(TemplateGenerator):
 
     def _update_prefix(self, prefix):
         for (key, value) in self:
-            if key.startswith('_') or key in ['parameters', 'version', 'transform'] or\
+            if key.startswith('_') or key in ['description', 'parameters', 'version', 'transform'] or\
                 type(value) in [str, int]:
                     continue
-                
+
             prefixed_object = {}
             for arg in value:
                 prefixed_object[prefix+arg] = value[arg]
@@ -188,7 +188,7 @@ class TemplateLoader(TemplateGenerator):
         description_attr = 'description' if hasattr(template, 'description') else 'Description'
         if hasattr(template, description_attr) and len(prefix)>0:
             description = getattr(template, description_attr)
-            if not '[{}]'.format(prefix) in description:
+            if description is not None and not '[{}]'.format(prefix) in description:
                 setattr(template, description_attr, '[{}] {}'.format(prefix, description))
                 
         if type(template) in [str, int] or template is None:
@@ -247,4 +247,27 @@ class TemplateLoader(TemplateGenerator):
         for title in self.parameters:
             parameter = self.parameters[title]
             if not 'Default' in parameter.properties:
-                parameter.properties['Default'] = params[title]  
+                parameter.properties['Default'] = params[title]
+    
+    def del_default_on_parameters(self):
+        for title in self.parameters:
+            parameter = self.parameters[title]
+            if 'Default' in parameter.properties:
+                del parameter.properties['Default']
+
+    def del_parameters(self):
+        self.parameters = {}
+                
+    def to_json(self, keep_parameters=True):
+        json_string = super().to_json()
+        if keep_parameters:
+            return json_string
+        else:
+            json_obj = json.loads(json_string)
+            if 'Parameters' in json_obj:
+                del json_obj['Parameters']
+            return json.dumps(json_obj)
+               
+    def to_yaml(self, keep_parameters=True):
+        json_string = self.to_json(keep_parameters)
+        return flip(json_string)
