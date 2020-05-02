@@ -45,17 +45,6 @@ Resources:
         Name: 'sns-topic-template-codecommit-inline-stack-condition'
         Environment: !Ref Environment
 
-  #SNSTopicS3:
-  #  Type: Template::S3
-  #  Properties:
-  #    Mode: Inline
-  #    Provider: S3
-  #    Bucket: !Ref BucketName
-  #    Key: !Ref TemplateKey
-  #    Parameters:
-  #      Name: 'sns-topic-template-s3-inline-stack'
-  #      Environment: !Ref Environment
-
   SNSTopicNested:
     Type: Template::Git
     Properties:
@@ -76,3 +65,14 @@ Resources:
       TimeoutInMinutes: 1
       TemplateBucket: !Ref BucketName
       TemplateKey: !Ref TemplateKey
+
+  SNSTopicS3:
+    Type: Template::S3
+    Properties:
+      Mode: Inline
+      Provider: S3
+      Bucket: !Ref BucketName
+      Key: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-s3-inline-stack'
+        Environment: !Ref Environment
