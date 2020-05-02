@@ -47,6 +47,7 @@ Resources:
 
   SNSTopicNested:
     Type: Template::Git
+    Condition: CreateResources
     Properties:
       Mode: Nested
       Provider: Github

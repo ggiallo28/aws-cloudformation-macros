@@ -98,7 +98,9 @@ def get_stack_resource(tp_main_template, name, params, tp_model):
     upload_to_s3(bucket, key, tp_model, params)
 
     nested_stack = cloudformation.Stack(title='NestedStack'+name)
-
+    
+    if hasattr(tp_main_template.resources[name], 'Condition'):
+        nested_stack.Condition = tp_main_template.resources[name].Condition
     if 'NotificationARNs' in tp_main_template.resources[name].properties:
         nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
     if 'Parameters' in tp_main_template.resources[name].properties:
