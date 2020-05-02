@@ -13,7 +13,7 @@ macros:
 
 example:
 	aws cloudformation package --template-file example.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
-	aws cloudformation deploy --template-file ./example.output --stack-name TemplateExamplev1 --region $(REGION) || echo "Continue"
+	aws cloudformation deploy --template-file ./example.output --stack-name TemplateExamplev1 --region $(REGION) --parameter-overrides Environment=prod || echo "Continue"
 	rm -f ./example.output
 
 example-boto3:

@@ -17,7 +17,7 @@ import boto3
 from cfn_flip import flip
 import json
 import git
-#import traceback
+import traceback
 from troposphere import cloudformation, Tags, Join, Ref
 from utils import *
 
@@ -144,8 +144,11 @@ def handle_template(request_id, template, params, region):
 
 def handler(event, context):
     print(json.dumps(event))
-    fragment = event["fragment"]
-    status = "success"
+    macro_response = {
+        "fragment": event["fragment"],
+        "status": "success",
+        "requestId": event["requestId"]
+    }    
 
     path = "/tmp/" + event["requestId"]
 
@@ -157,17 +160,14 @@ def handler(event, context):
     else:
         print ("Successfully created the directory %s " % path)
 
-    #try:
-    fragment = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
-    print(json.dumps(fragment))
-    #except Exception as e:
-    #    status = "failure"
+    try:
+        macro_response["fragment"] = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
+    except Exception as e:
+        traceback.print_exc()
+        macro_response["status"] = "failure"
+        macro_response["errorMessage"] = str(e)
 
-    return {
-        "requestId": event["requestId"],
-        "status": status,
-        "fragment": fragment
-    }
+    return macro_response
 
 if __name__ == "__main__":
     handler({

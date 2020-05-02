@@ -1,4 +1,5 @@
 Transform: [Template]
+Description: Example Macro Template.
 
 Parameters:
   #GitHubUser:
@@ -21,16 +22,20 @@ Parameters:
     Default: test/sns-topics.yaml
   Environment:
     Type: String
-    Default: dev
 
 Conditions: 
-  CreateProdResources: !Equals [ !Ref Environment, prod ]
+  CreateResources: !Equals [ !Ref Environment, prod ]
 
 Resources:
 
+  HighPriorityAlarm:
+    Type: "AWS::SNS::Topic"
+    Properties: 
+      TopicName: !Sub High-Priority-Alarm-${Environment}
+
   SNSTopiInlineCondition:
     Type: Template::Git
-    Condition: CreateProdResources
+    Condition: CreateResources
     Properties:
       Mode: Inline
       Provider: Codecommit

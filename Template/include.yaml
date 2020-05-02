@@ -1,7 +1,0 @@
-Resources:
-  SNSInclude:
-    Type: 'AWS::CloudFormation::WaitConditionHandle'
-  'Fn::Transform':
-    Name: 'AWS::Include'
-    Parameters:
-      Location : "s3://audioposts-site/test/sns-topics.yaml"
