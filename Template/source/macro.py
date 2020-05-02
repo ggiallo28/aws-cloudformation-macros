@@ -1,4 +1,4 @@
-import os
+import os, io
 import json
 import boto3
 from cfn_flip import flip
@@ -9,6 +9,8 @@ from troposphere import cloudformation, Tags, Join, Ref
 from utils import *
 
 PREFIX = "Template::"
+BRANCH_DEFAULT = 'master'
+TEMPLATE_NAME_DEFAULT = 'template.yaml'
 
 LAMBDA_ARN = os.environ["LAMBDA_ARN"] if "LAMBDA_ARN" in os.environ else "__main__"
 s3 = boto3.client('s3')
@@ -20,7 +22,11 @@ def get_param(name, properties, params):
 
 def s3_import(request_id, name, properties, params, region):
     bucket = get_param('Bucket', properties, params)
+    if bucket is None:
+      raise Exception('Bucket property must be provied when provider is S3.')
     key = get_param('Key', properties, params)
+    if owner is None:
+      raise Exception('Key property must be provied when provider is S3.')
 
     file = "/tmp/" + request_id + "/" + key.replace("/", "_") 
 
@@ -35,13 +41,18 @@ def s3_import(request_id, name, properties, params, region):
 def github_import(request_id, name, properties, params, region):
     repo = get_param('Repo', properties, params)
     branch = get_param('Branch', properties, params)
+    branch = BRANCH_DEFAULT if branch is None else branch
     owner = get_param('Owner', properties, params)
+    if owner is None:
+      raise Exception('Owner property must be provied when provider is GitHub.')
     token = get_param('OAuthToken', properties, params)
+    token = "" if token is None else '{}@'.format(token)
     path = get_param('Path', properties, params)
+    path = TEMPLATE_NAME_DEFAULT if token is None else path
 
     clone_dir = "/tmp/" + request_id  + "/github"
     if not os.path.exists(clone_dir + "/" + repo):
-        repo_url =  "https://{}@github.com/{}/{}.git".format(token, owner, repo)
+        repo_url =  "https://{}github.com/{}/{}.git".format(token, owner, repo)
         git.Git(clone_dir).clone(repo_url)
 
     file = clone_dir + "/" + repo + "/" + path
@@ -53,13 +64,60 @@ def github_import(request_id, name, properties, params, region):
 def codecommit_import(request_id, name, properties, params, region):
     repo = get_param('Repo', properties, params)
     branch = get_param('Branch', properties, params)
-    branch = 'master' if branch is None else branch
+    branch = BRANCH_DEFAULT if branch is None else branch
     path = get_param('Path', properties, params)
+    path = TEMPLATE_NAME_DEFAULT if token is None else path
 
     response = cm.get_file(repositoryName=repo, commitSpecifier = branch,  filePath=path)
-    document = json.loads(flip(response['fileContent']))  
+
+    try:
+      document = json.loads(response['fileContent'])
+    except:
+      document = json.loads(flip(response['fileContent']))  
 
     return document
+
+def upload_to_s3(bucket, key, tp_model, params):
+    value_bucket = params[bucket.data['Ref']] if isinstance(bucket, Ref) else bucket
+    value_key = params[key.data['Ref']] if isinstance(key, Ref) else key
+
+    try:
+      template = tp_model.to_json()
+      s3.upload_fileobj(io.BytesIO(template.encode()), value_bucket, value_key) 
+    except:
+      print("Unable to upload Template to S3 Bucket.")       
+
+def get_stack_resource(tp_main_template, name, params, tp_model):
+    bucket = tp_main_template.resources[name].properties['TemplateBucket']
+    if 'TemplateKey' in tp_main_template.resources[name].properties:
+        key = tp_main_template.resources[name].properties['TemplateKey']
+    else:
+        key = tp_main_template.resources[name].properties['Path']
+
+    upload_to_s3(bucket, key, tp_model, params)
+
+    nested_stack = cloudformation.Stack(title='NestedStack'+name)
+
+    if 'NotificationARNs' in tp_main_template.resources[name].properties:
+        nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
+    if 'Parameters' in tp_main_template.resources[name].properties:
+        nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
+    if 'Tags' in tp_main_template.resources[name].properties:
+        nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
+    if 'TimeoutInMinutes' in tp_main_template.resources[name].properties:
+        nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
+    nested_stack.TemplateURL = Join("",['https://', bucket, '.s3.amazonaws.com/', key])
+
+    return nested_stack
+
+def get_inline_resource(properties, tp_model, name, rule):
+    if 'Parameters' in properties:
+        parameters = properties['Parameters']
+        tp_model.set_default_parameters(parameters)
+    tp_model.find_relations(to_replace=True, prefix=name, condition=rule)
+    tp_model.del_parameters()
+
+    return tp_model
 
 switcher = {
     'codecommit' : codecommit_import,
@@ -99,31 +157,11 @@ def handle_template(request_id, template, params, region):
                 }
 
             if mode.lower() == "inline":
-                if 'Parameters' in properties:
-                    parameners = properties['Parameters']
-                    tp_model.set_default_parameters(parameters)
-                tp_model.find_relations(to_replace=True, prefix=name, condition=rule)
-                tp_model.del_parameters()
-
-                new_template += tp_model
+                new_template += get_inline_resource(properties, tp_model, name, rule)
             if mode.lower() == "nested":
-                bucket = tp_main_template.resources[name].properties['TemplateBucket']
-                if 'TemplateKey' in tp_main_template.resources[name].properties:
-                    key = tp_main_template.resources[name].properties['TemplateKey']
-                else:
-                    key = tp_main_template.resources[name].properties['Path']
-                nested_stack = cloudformation.Stack(title='NestedStack'+name)
-                if 'NotificationARNs' in tp_main_template.resources[name].properties:
-                    nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
-                if 'Parameters' in tp_main_template.resources[name].properties:
-                    nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
-                if 'Tags' in tp_main_template.resources[name].properties:
-                    nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
-                if 'TimeoutInMinutes' in tp_main_template.resources[name].properties:
-                    nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
-                nested_stack.TemplateURL = Join("",["https://s3-", Ref("AWS::Region"), ".amazonaws.com/", bucket, "/", key])
-
+                nested_stack = get_stack_resource(tp_main_template, name, params, tp_model)
                 new_template.add_resource(nested_stack)
+
         else:
             new_template.add_resource(tp_main_template.resources[name])
 
@@ -158,116 +196,137 @@ def handler(event, context):
 
 if __name__ == "__main__":
     handler({
-    "accountId": "831650818513",
-    "fragment": {
-        "Parameters": {
-            "RepositoryName": {
-                "Type": "String",
-                "Default": "template-macro"
-            },
-            "BranchName": {
-                "Type": "String",
-                "Default": "master"
-            },
-            "BucketName": {
-                "Type": "String",
-                "Default": "audioposts-site"
-            },
-            "TemplateKey": {
-                "Type": "String",
-                "Default": "test/sns-topics.yaml"
-            },
-            "Environment": {
-                "Type": "String",
-                "Default": "dev"
-            }
-        },
-        "Resources": {
-            "SNSTopiInlineCondition": {
-                "Type": "Template::Git",
-                "Condition": "CreateProdResources",
-                "Properties": {
-                    "Mode": "Inline",
-                    "Provider": "Codecommit",
-                    "Repo": {
-                        "Ref": "RepositoryName"
-                    },
-                    "Branch": {
-                        "Ref": "BranchName"
-                    },
-                    "Path": {
-                        "Ref": "TemplateKey"
-                    },
-                    "Parameters": {
-                        "Name": "sns-topic-template-codecommit-inline-stack-condition",
-                        "Environment": {
-                            "Ref": "Environment"
-                        }
-                    }
-                }
-            },
-            "SNSTopiInline": {
-                "Type": "Template::Git",
-                "Properties": {
-                    "Mode": "Inline",
-                    "Provider": "Codecommit",
-                    "Repo": {
-                        "Ref": "RepositoryName"
-                    },
-                    "Branch": {
-                        "Ref": "BranchName"
-                    },
-                    "Path": {
-                        "Ref": "TemplateKey"
-                    },
-                    "Parameters": {
-                        "Name": "sns-topic-template-codecommit-inline-stack",
-                        "Environment": {
-                            "Ref": "Environment"
-                        }
-                    }
-                }
-            },
-            "SNSTopicS3": {
-                "Type": "Template::S3",
-                "Properties": {
-                    "Mode": "Inline",
-                    "Provider": "S3",
-                    "Bucket": {
-                        "Ref": "BucketName"
-                    },
-                    "Key": {
-                        "Ref": "TemplateKey"
-                    },
-                    "Parameters": {
-                        "Name": "sns-topic-template-s3-inline-stack",
-                        "Environment": {
-                            "Ref": "Environment"
-                        }
-                    }
-                }
-            }
-        },
-        "Conditions": {
-            "CreateProdResources": {
-                "Fn::Equals": [
-                    {
-                        "Ref": "Environment"
-                    },
-                    "prod"
-                ]
-            }
-        }
+  "accountId": "831650818513",
+  "fragment": {
+    "Description": "Example Macro Template.",
+    "Parameters": {
+      "GitHubUser": {
+        "Type": "String",
+        "Default": "ggiallo28"
+      },
+      "RepositoryName": {
+        "Type": "String",
+        "Default": "aws-cloudformation-macros"
+      },
+      "BranchName": {
+        "Type": "String",
+        "Default": "master"
+      },
+      "BucketName": {
+        "Type": "String",
+        "Default": "audioposts-site"
+      },
+      "TemplateKey": {
+        "Type": "String",
+        "Default": "Template/sns-topics-template.yaml"
+      },
+      "Environment": {
+        "Type": "String",
+        "Default": "prod"
+      }
     },
-    "transformId": "831650818513::Template",
-    "requestId": "38307b43-4854-4423-a332-0e9b587bc87b",
-    "region": "us-east-1",
-    "params": {},
-    "templateParameterValues": {
-        "BucketName": "audioposts-site",
-        "TemplateKey": "test/sns-topics.yaml",
-        "Environment": "dev",
-        "RepositoryName": "template-macro",
-        "BranchName": "master"
+    "Resources": {
+      "HighPriorityAlarm": {
+        "Type": "AWS::SNS::Topic",
+        "Properties": {
+          "TopicName": {
+            "Fn::Sub": "High-Priority-Alarm-${Environment}"
+          }
+        }
+      },
+      "SNSTopiInlineCondition": {
+        "Type": "Template::Git",
+        "Condition": "CreateResources",
+        "Properties": {
+          "Mode": "Inline",
+          "Provider": "Github",
+          "Repo": {
+            "Ref": "RepositoryName"
+          },
+          "Branch": {
+            "Ref": "BranchName"
+          },
+          "Path": {
+            "Ref": "TemplateKey"
+          },
+          "Owner": {
+            "Ref": "GitHubUser"
+          },
+          "Parameters": {
+            "Name": "sns-topic-template-codecommit-inline-stack-condition",
+            "Environment": {
+              "Ref": "Environment"
+            }
+          }
+        }
+      },
+      "SNSTopicNested": {
+        "Type": "Template::Git",
+        "Properties": {
+          "Mode": "Nested",
+          "Provider": "Github",
+          "Repo": {
+            "Ref": "RepositoryName"
+          },
+          "Branch": {
+            "Ref": "BranchName"
+          },
+          "Path": {
+            "Ref": "TemplateKey"
+          },
+          "Owner": {
+            "Ref": "GitHubUser"
+          },
+          "Parameters": {
+            "Name": "sns-topic-template-github-nested-stack",
+            "Environment": {
+              "Ref": "Environment"
+            }
+          },
+          "NotificationARNs": [
+            {
+              "Ref": "HighPriorityAlarm"
+            }
+          ],
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": {
+                "Ref": "Environment"
+              }
+            }
+          ],
+          "TimeoutInMinutes": 1,
+          "TemplateBucket": {
+            "Ref": "BucketName"
+          },
+          "TemplateKey": {
+            "Ref": "TemplateKey"
+          }
+        }
+      }
+    },
+    "Conditions": {
+      "CreateResources": {
+        "Fn::Equals": [
+          {
+            "Ref": "Environment"
+          },
+          "prod"
+        ]
+      }
     }
+  },
+  "transformId": "831650818513::Template",
+  "requestId": "c13c32e3-ef01-4c2d-b980-00ff99b76913",
+  "region": "us-east-1",
+  "params": {},
+  "templateParameterValues": {
+    "GitHubUser": "ggiallo28",
+    "BucketName": "audioposts-site",
+    "TemplateKey": "Template/sns-topics-template.yaml",
+    "Environment": "prod",
+    "RepositoryName": "aws-cloudformation-macros",
+    "BranchName": "master"
+  }
 }, None)

@@ -36,6 +36,8 @@ This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
         --stack-name template-macro-example \
         --template-file example.yaml
     ```
+   You need to change BucketName parameter in example.yaml.
+
 
 # Custom Resources
 
@@ -98,6 +100,8 @@ Properties:
 `Mode`
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
+
+If `Nested` configuration is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
 
 _Required_: Yes
 
@@ -281,6 +285,8 @@ Properties:
 `Mode`
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
+
+If `Nested` configuration is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
 
 _Required_: Yes
 
