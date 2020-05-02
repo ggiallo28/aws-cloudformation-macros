@@ -35,51 +35,348 @@ The `Template` macro adds the ability to create CloudFormation resources from ex
 
 # Custom Resources
 
-## Template::Git
-
 This Macro uses two Custom Resources.
+
+## Template::Git
 
 The Template::Git imports Cloudformation Template from Git Repository.
 
 ### Syntax
 
-To declare this entity in your AWS CloudFormation template, use the following syntax:
+To declare this entity in your AWS CloudFormation template use the following syntax:
 
 #### JSON
 ```
 {
-  "firstName": "John",
-  "lastName": "Smith",
-  "age": 25
+  "Type" : "Template::Git",
+  "Properties" : {
+  	  "Mode": String,
+  	  "Provider": String,
+  	  "Repo": String,
+  	  "Branch": String,
+  	  "Owner": String,
+  	  "OAuthToken": String,
+  	  "Path": String,
+      "Parameters" : {Key : Value, ...},
+      "NotificationARNs" : [ String, ... ],
+      "Tags" : [ Tag, ... ],
+      "TimeoutInMinutes" : Integer,
+      "TemplateBucket" : String,
+      "TemplateKey" : String,
+    }
 }
 ```
 
 #### YAML
 ```
-Type: AWS::SNS::Topic
+Type: Template::Git
 Properties: 
-  DisplayName: String
-  KmsMasterKeyId: String
-  Subscription: 
-    - Subscription
+  Mode: String
+  Provider: String
+  Repo: String
+  Branch: String
+  Owner: String
+  OAuthToken: String
+  Path: String
+  Parameters:
+  	Key : Value
+  NotificationARNs:
+    - NotificationARN
   Tags: 
-    - Tag
-  TopicName: String
+    - Tag 
+  TimeoutInMinutes: Integer
+  TemplateBucket: String
+  TemplateKey: String
 `````
 
 ### Properties
 
-`DisplayName`
+`Mode`
 
-The display name to use for an Amazon SNS topic with SMS subscriptions.
+Specifies whether to import the template inline or as `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` resource.
+
+_Required_: Yes
+
+_Type_: String
+
+_Allowed Values_:  `Inline | Nested`
+
+
+`Provider`
+
+Specifies from where to import template.
+
+_Required_: Yes
+
+_Type_: String
+
+_Allowed Values_:  `S3 | Codecommit | GitHub`
+
+`Repo`
+
+The name of the repository.
+
+_Required_: Yes
+
+_Type_: String
+
+
+`Branch`
+
+The branch repository.
 
 _Required_: No
 
 _Type_: String
 
-### Return Values
+_Default_: `master`
 
-[WIP]
+
+`Owner`
+
+The name of the GitHub user.
+
+Conditional. Required if `Provider` is `GitHub`
+
+_Required_: Conditional
+
+_Type_: String
+
+
+`OAuthToken`
+
+Represents the GitHub authentication token that allows Macro to perform operations on your GitHub repository. 
+
+Conditional. Required if `Provider` is `GitHub`
+
+_Required_: Conditional
+
+_Type_: String
+
+`Path`
+
+Specifies the path of the template inside the repository.
+
+_Required_: Yes
+
+_Type_: String
+
+_Example_: `path/to/file/template.yaml`
+
+`Parameters`
+
+The set value pairs that represent the parameters passed to Macro when the template is imported. Each parameter has a name corresponding to a parameter defined in the embedded template and a value representing the value that you want to set for the parameter.
+
+Conditional. Required if the nested stack requires input parameters.
+
+_Required_: Conditional
+
+_Type_: Map of String
+
+`NotificationARNs`
+
+The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: List of String
+
+`Tags`
+
+Key-value pairs to associate with nested stack. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: List of [Tag](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html)
+
+`TimeoutInMinutes`
+
+The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: Integer
+
+_Minimum_: 1
+
+
+`TemplateBucket`
+
+The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+
+
+Conditional. Required if `Mode` is `Nested`
+
+
+_Required_: Conditional
+
+_Type_: String
+
+
+`TemplateKey`
+
+The path where template from git is saved in the S3 Bucket . Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+
+
+Conditional. Required if `Mode` is `Nested`
+
+
+_Required_: Conditional
+
+_Type_: String
+
+## Template::S3
+
+The Template::S3 imports Cloudformation Template from S3 Bucket.
+
+### Syntax
+
+To declare this entity in your AWS CloudFormation template use the following syntax:
+
+#### JSON
+```
+{
+  "Type" : "Template::Git",
+  "Properties" : {
+  	  "Mode": String,
+  	  "Provider": String,
+  	  "Bucket": String,
+  	  "Key": String,
+      "Parameters" : {Key : Value, ...},
+      "NotificationARNs" : [ String, ... ],
+      "Tags" : [ Tag, ... ],
+      "TimeoutInMinutes" : Integer,
+      "TemplateBucket" : String,
+      "TemplateKey" : String,
+    }
+}
+```
+
+#### YAML
+```
+Type: Template::Git
+Properties: 
+  Mode: String
+  Provider: String
+  Bucket: String
+  Key: String
+  Parameters:
+  	Key : Value
+  NotificationARNs:
+    - NotificationARN
+  Tags: 
+    - Tag 
+  TimeoutInMinutes: Integer
+  TemplateBucket: String
+  TemplateKey: String
+`````
+
+### Properties
+
+
+`Mode`
+
+Specifies whether to import the template inline or as `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` resource.
+
+_Required_: Yes
+
+_Type_: String
+
+_Allowed Values_:  `Inline | Nested`
+
+
+`Provider`
+
+Specifies from where to import template.
+
+_Required_: Yes
+
+_Type_: String
+
+_Allowed Values_:  `S3 | Codecommit | GitHub`
+
+`Bucket`
+
+The name of the S3 Bucket from where the template is dowloaded.
+
+Conditional. Required if `Provider` is `S3`
+
+_Required_: Conditional
+
+_Type_: String
+
+
+`Key`
+
+The path from where the template is dowloaded.
+
+Conditional. Required if `Provider` is `S3`
+
+_Required_: Conditional
+
+_Type_: String
+
+`Parameters`
+
+The set value pairs that represent the parameters passed to Macro when the template is imported. Each parameter has a name corresponding to a parameter defined in the embedded template and a value representing the value that you want to set for the parameter.
+
+Conditional. Required if the nested stack requires input parameters.
+
+_Required_: Conditional
+
+_Type_: Map of String
+
+`NotificationARNs`
+
+The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: List of String
+
+`Tags`
+
+Key-value pairs to associate with nested stack. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: List of [Tag](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html)
+
+`TimeoutInMinutes`
+
+The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+
+_Required_: No
+
+_Type_: Integer
+
+_Minimum_: 1
+
+
+`TemplateBucket`
+
+The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+
+
+Conditional. Required if `Mode` is `Nested`
+
+
+_Required_: Conditional
+
+_Type_: String
+
+
+`TemplateKey`
+
+The path where template from git is saved in the S3 Bucket . Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+
+
+Conditional. Required if `Mode` is `Nested`
+
+
+_Required_: Conditional
+
+_Type_: String
 
 ### Examples
 
@@ -585,6 +882,8 @@ Resources:
         Environment: !Ref Environment
 ```
 
+# Work in Progress
 
-
+- Auto Tag Resource in the imported Template using Tag property.
+- Return Values for custom resources
 
