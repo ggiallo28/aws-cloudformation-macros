@@ -237,11 +237,24 @@ class TemplateLoader(TemplateGenerator):
             pass
 
         if isinstance(template, Ref):
+            getatt_regexp = re.compile("[A-Za-z0-9]+\.[A-Za-z0-9]+\.[A-Za-z]+")
+            ref_regexp = re.compile("[A-Za-z0-9]+\.[A-Za-z0-9]+")
+            
             if not isinstance(parent, Parameter):
                 self._replace_ref(parent, template, parent_prop)
             value = template.data['Ref']
             if value not in list(self.parameters.keys()) and not value.startswith('AWS::'):
                 TemplateLoader.__setattr(parent, parent_prop, Ref(prefix + value))
+            
+            if getatt_regexp.match(value):
+                values = value.split(".")
+                template = GetAtt("".join(values[:2]), attrName=values[2])
+                TemplateLoader.__setattr(parent, parent_prop, template)
+            elif ref_regexp.match(value):
+                values = value.split(".")
+                template = Ref("".join(values))
+                TemplateLoader.__setattr(parent, parent_prop, template)
+            
 
         if isinstance(template, GetAtt):
             pass

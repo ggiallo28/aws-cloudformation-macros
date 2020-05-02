@@ -83,6 +83,7 @@ def upload_to_s3(bucket, key, tp_model, params):
 
     try:
       template = tp_model.to_json()
+      print(value_bucket, value_key)
       s3.upload_fileobj(io.BytesIO(template.encode()), value_bucket, value_key) 
     except:
       print("Unable to upload Template to S3 Bucket.")       
@@ -127,6 +128,8 @@ switcher = {
 
 def handle_template(request_id, template, params, region):
     tp_main_template = TemplateLoader.loads(template)
+    tp_main_template.find_relations()
+    
     new_template = TemplateLoader.init()
     new_template.parameters = tp_main_template.parameters
     new_template.conditions = tp_main_template.conditions

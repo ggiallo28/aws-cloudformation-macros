@@ -58,10 +58,13 @@ Resources:
         Name: 'sns-topic-template-github-nested-stack'
         Environment: !Ref Environment
       NotificationARNs:
+        - !Ref SNSTopiInlineCondition.UrgentPriorityAlarm
         - !Ref HighPriorityAlarm
       Tags: 
         - Key: Environment
           Value: !Ref Environment
+        - Key: TopicName
+          Value: !Ref SNSTopiInlineCondition.UrgentPriorityAlarm.TopicName
       TimeoutInMinutes: 1
       TemplateBucket: !Ref BucketName
       TemplateKey: !Ref TemplateKey

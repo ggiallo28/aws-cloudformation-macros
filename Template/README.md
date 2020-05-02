@@ -101,7 +101,14 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If `Nested` configuration is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
+If `Nested` mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
+
+If `Inline` mode is used you can reference resource in imported Template using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
+
+For example, you can obtain the Arn of a resource inside imported template using:
+- !Ref Template.Resource.Arn
+you can reference resource inside imported template using:
+- !Ref Template.Resource
 
 _Required_: Yes
 
@@ -286,7 +293,14 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If `Nested` configuration is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
+If `Nested` mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
+
+If `Inline` mode is used you can reference resource in imported Template using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
+
+For example, you can obtain the Arn of a resource inside imported template using:
+- !Ref Template.Resource.Arn
+you can reference resource inside imported template using:
+- !Ref Template.Resource
 
 _Required_: Yes
 
