@@ -23,16 +23,6 @@ Resources:
               - Effect: Allow
                 Action: ['logs:*']
                 Resource: 'arn:aws:logs:*:*:*'
-                
-  ResourceFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python2.7
-      CodeUri: source
-      Handler: resource.handler
-      Policies: PowerUserAccess
-      Layers: 
-        - !Sub arn:aws:lambda:${AWS::Region}:553035198032:layer:git:11
 
   MacroFunction:
     Type: AWS::Serverless::Function
@@ -41,11 +31,9 @@ Resources:
       CodeUri: source
       Handler: macro.handler
       Role: !GetAtt TransformExecutionRole.Arn
+      Timeout: 300
       Layers: 
         - !Sub arn:aws:lambda:${AWS::Region}:553035198032:layer:git:11
-      Environment:
-        Variables:
-          LAMBDA_ARN: !GetAtt ResourceFunction.Arn
 
   Macro:
     Type: AWS::CloudFormation::Macro

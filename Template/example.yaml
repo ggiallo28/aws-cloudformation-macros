@@ -21,25 +21,25 @@ Parameters:
     Default: test/sns-topics.yaml
   Environment:
     Type: String
-    Default: test
+    Default: dev
 
 Conditions: 
   CreateProdResources: !Equals [ !Ref Environment, prod ]
 
 Resources:
 
-  #SNSTopiInlineCondition:
-  #  Type: Template::Git
-  #  Condition: CreateProdResources
-  #  Properties:
-  #    Mode: Inline
-  #    Provider: Codecommit
-  #    Repo: !Ref RepositoryName
-  #    Branch: !Ref BranchName
-  #    Path: !Ref TemplateKey
-  #    Parameters:
-  #      Name: 'sns-topic-template-codecommit-inline-stack'
-  #      Environment: !Ref Environment
+  SNSTopiInlineCondition:
+    Type: Template::Git
+    Condition: CreateProdResources
+    Properties:
+      Mode: Inline
+      Provider: Codecommit
+      Repo: !Ref RepositoryName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateKey
+      Parameters:
+        Name: 'sns-topic-template-codecommit-inline-stack-condition'
+        Environment: !Ref Environment
 
   SNSTopiInline:
     Type: Template::Git

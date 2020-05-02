@@ -17,6 +17,7 @@ import boto3
 from cfn_flip import flip
 import json
 import git
+#import traceback
 from troposphere import cloudformation, Tags, Join, Ref
 from utils import *
 
@@ -83,6 +84,7 @@ def handle_template(request_id, template, params, region):
     tp_main_template = TemplateLoader.loads(template)
     new_template = TemplateLoader.init()
     new_template.parameters = tp_main_template.parameters
+    new_template.conditions = tp_main_template.conditions
 
     for name, resource in template.get("Resources", {}).items():
         if resource["Type"].startswith(PREFIX):
@@ -101,12 +103,21 @@ def handle_template(request_id, template, params, region):
             mode = properties.get("Mode", "Inline")
             parameters = properties.get("Parameters", {})
 
+            rule = None
+            if  hasattr(tp_main_template.resources[name], 'Condition'):
+                key = tp_main_template.resources[name].Condition
+                rule = {
+                    "key": key,
+                    "value" : tp_main_template.conditions[key]
+                }
+
             if mode.lower() == "inline":
                 if 'Parameters' in properties:
                     parameners = properties['Parameters']
                     tp_model.set_default_parameters(parameters)
-                tp_model.find_relations(to_replace=True, prefix=name)
+                tp_model.find_relations(to_replace=True, prefix=name, condition=rule)
                 tp_model.del_parameters()
+
                 new_template += tp_model
             if mode.lower() == "nested":
                 bucket = tp_main_template.resources[name].properties['TemplateBucket']
@@ -141,7 +152,6 @@ def handler(event, context):
     try:
         os.mkdir(path)
         os.mkdir(path + "/github")
-        os.mkdir(path + "/codecommit")
     except OSError:
         print ("Creation of the directory %s failed" % path)
     else:
@@ -150,151 +160,127 @@ def handler(event, context):
     #try:
     fragment = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
     print(json.dumps(fragment))
-
     #except Exception as e:
     #    status = "failure"
 
     return {
         "requestId": event["requestId"],
         "status": status,
-        "fragment": fragment,
+        "fragment": fragment
     }
 
 if __name__ == "__main__":
     handler({
-  "accountId": "831650818513",
-  "fragment": {
-    "Parameters": {
-      "GitHubUser": {
-        "Type": "String",
-        "Default": "ggiallo28"
-      },
-      "RepositoryName": {
-        "Type": "String",
-        "Default": "template-macro"
-      },
-      "BranchName": {
-        "Type": "String",
-        "Default": "master"
-      },
-      "GitHubToken": {
-        "Type": "String",
-        "Default": ""
-      },
-      "BucketName": {
-        "Type": "String",
-        "Default": "audioposts-site"
-      },
-      "TemplateKey": {
-        "Type": "String",
-        "Default": "test/sns-topics.yaml"
-      },
-      "Environment": {
-        "Type": "String",
-        "Default": "test"
-      }
+    "accountId": "831650818513",
+    "fragment": {
+        "Parameters": {
+            "RepositoryName": {
+                "Type": "String",
+                "Default": "template-macro"
+            },
+            "BranchName": {
+                "Type": "String",
+                "Default": "master"
+            },
+            "BucketName": {
+                "Type": "String",
+                "Default": "audioposts-site"
+            },
+            "TemplateKey": {
+                "Type": "String",
+                "Default": "test/sns-topics.yaml"
+            },
+            "Environment": {
+                "Type": "String",
+                "Default": "dev"
+            }
+        },
+        "Resources": {
+            "SNSTopiInlineCondition": {
+                "Type": "Template::Git",
+                "Condition": "CreateProdResources",
+                "Properties": {
+                    "Mode": "Inline",
+                    "Provider": "Codecommit",
+                    "Repo": {
+                        "Ref": "RepositoryName"
+                    },
+                    "Branch": {
+                        "Ref": "BranchName"
+                    },
+                    "Path": {
+                        "Ref": "TemplateKey"
+                    },
+                    "Parameters": {
+                        "Name": "sns-topic-template-codecommit-inline-stack-condition",
+                        "Environment": {
+                            "Ref": "Environment"
+                        }
+                    }
+                }
+            },
+            "SNSTopiInline": {
+                "Type": "Template::Git",
+                "Properties": {
+                    "Mode": "Inline",
+                    "Provider": "Codecommit",
+                    "Repo": {
+                        "Ref": "RepositoryName"
+                    },
+                    "Branch": {
+                        "Ref": "BranchName"
+                    },
+                    "Path": {
+                        "Ref": "TemplateKey"
+                    },
+                    "Parameters": {
+                        "Name": "sns-topic-template-codecommit-inline-stack",
+                        "Environment": {
+                            "Ref": "Environment"
+                        }
+                    }
+                }
+            },
+            "SNSTopicS3": {
+                "Type": "Template::S3",
+                "Properties": {
+                    "Mode": "Inline",
+                    "Provider": "S3",
+                    "Bucket": {
+                        "Ref": "BucketName"
+                    },
+                    "Key": {
+                        "Ref": "TemplateKey"
+                    },
+                    "Parameters": {
+                        "Name": "sns-topic-template-s3-inline-stack",
+                        "Environment": {
+                            "Ref": "Environment"
+                        }
+                    }
+                }
+            }
+        },
+        "Conditions": {
+            "CreateProdResources": {
+                "Fn::Equals": [
+                    {
+                        "Ref": "Environment"
+                    },
+                    "prod"
+                ]
+            }
+        }
     },
-    "Resources": {
-      "SNSTopiInline": {
-        "Type": "Template::Git",
-        "Properties": {
-          "Mode": "Inline",
-          "Provider": "Codecommit",
-          "Repo": {
-            "Ref": "RepositoryName"
-          },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-codecommit-inline-stack",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      },
-      "SNSTopicS3": {
-        "Type": "Template::S3",
-        "Properties": {
-          "Mode": "Inline",
-          "Provider": "S3",
-          "Bucket": {
-            "Ref": "BucketName"
-          },
-          "Key": {
-            "Ref": "TemplateKey"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-s3-inline-stack",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      },
-      "SNSTopicNested": {
-        "Type": "Template::Git",
-        "Properties": {
-          "Mode": "Nested",
-          "Provider": "GitHub",
-          "Repo": {
-            "Ref": "RepositoryName"
-          },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Owner": {
-            "Ref": "GitHubUser"
-          },
-          "OAuthToken": {
-            "Ref": "GitHubToken"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-github-nested-stack",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          },
-          "NotificationARNs": [
-            {
-              "Fn::GetAtt": [
-                "SNSTopicS3",
-                "UrgentPriorityAlarm"
-              ]
-            }
-          ],
-          "Tags": [
-            {
-              "Key": "Environment",
-              "Value": {
-                "Ref": "Environment"
-              }
-            }
-          ],
-          "TimeoutInMinutes": "1",
-          "TemplateBucket": "audioposts-site"
-        }
-      }
+    "transformId": "831650818513::Template",
+    "requestId": "38307b43-4854-4423-a332-0e9b587bc87b",
+    "region": "us-east-1",
+    "params": {},
+    "templateParameterValues": {
+        "BucketName": "audioposts-site",
+        "TemplateKey": "test/sns-topics.yaml",
+        "Environment": "dev",
+        "RepositoryName": "template-macro",
+        "BranchName": "master"
     }
-  },
-  "transformId": "831650818513::Template",
-  "requestId": "32a696b0-19a3-4fc0-84c7-fc3d4ae6846b",
-  "region": "us-east-1",
-  "params": {},
-  "templateParameterValues": {
-    "GitHubUser": "ggiallo28",
-    "BucketName": "audioposts-site",
-    "TemplateKey": "test/sns-topics.yaml",
-    "Environment": "test",
-    "RepositoryName": "template-macro",
-    "BranchName": "master",
-    "GitHubToken": ""
-  }
 }, None)

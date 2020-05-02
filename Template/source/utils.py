@@ -1,6 +1,6 @@
 import json, re, troposphere
-from troposphere import Parameter, Ref, Output, Sub
-from troposphere import AWSObject as Resource
+from troposphere import Parameter, Ref, Output, Sub, Condition
+from troposphere import AWSObject as Resource, And
 from troposphere import Join, Select, Export, Base64, Cidr, FindInMap, GetAtt, GetAZs, ImportValue
 from troposphere.template_generator import TemplateGenerator
 from troposphere import AWSObject, AWSProperty, Tags
@@ -178,45 +178,60 @@ class TemplateLoader(TemplateGenerator):
                 prefixed_object[prefix+arg] = value[arg]
             self[key] = prefixed_object
         
-    def find_relations(self, to_replace=False, prefix=""):
+    def find_relations(self, to_replace=False, prefix="", condition = None):
         if len(prefix) > 0:
             self._update_prefix(prefix)
-        self._find_relations(self, None, None, to_replace, prefix)
+        self._find_relations(self, None, None, to_replace, prefix, condition)
         
-    def _find_relations(self, template, parent = None, parent_prop = None, to_replace=False, prefix=""):
+    def _find_relations(self, template, parent = None, parent_prop = None, to_replace=False, prefix="", condition = None):        
+        if type(template) in [str, int] or template is None:
+            return
         
         description_attr = 'description' if hasattr(template, 'description') else 'Description'
         if hasattr(template, description_attr) and len(prefix)>0:
             description = getattr(template, description_attr)
             if description is not None and not '[{}]'.format(prefix) in description:
                 setattr(template, description_attr, '[{}] {}'.format(prefix, description))
-                
-        if type(template) in [str, int] or template is None:
-            return
 
         if type(template) == dict:
             for key in template:
-                self._find_relations(template[key], template, key, to_replace, prefix)
+                self._find_relations(template[key], template, key, to_replace, prefix, condition)
 
         if type(template) == list:
             for element in template:
-                self._find_relations(element, template, template.index(element), to_replace, prefix)
+                self._find_relations(element, template, template.index(element), to_replace, prefix, condition)
 
         for Obj in [Join, Select, Export, Base64, Cidr, FindInMap, GetAZs, ImportValue]:
             if isinstance(template, Obj):
-                self._find_relations(template.data, template, 'data', to_replace, prefix)    
+                self._find_relations(template.data, template, 'data', to_replace, prefix, condition)
+                
+        if hasattr(template, 'Condition'):
+            template.Condition = prefix + template.Condition
                 
         if isinstance(template, Resource) and len(prefix)>0:
             if not prefix in template.title:
                 setattr(template, 'title', '{}{}'.format(prefix, template.title))
-
+            if condition is not None:
+                if hasattr(template, 'Condition'):
+                    old_condition = getattr(template, 'Condition')
+                    new_condition = condition["key"] + old_condition
+                    self.add_condition(new_condition,  And(Condition(old_condition), condition["value"]))
+                    setattr(template, 'Condition', new_condition)
+                else:
+                    setattr(template, 'Condition', condition["key"])
+                    
         if isinstance(template, Output):
             if hasattr(template, 'Export') and len(prefix) > 0:
                 data = getattr(getattr(template, 'Export'), 'data')
                 TemplateLoader.__setattr(data, 'Name', Join("-",[prefix, data['Name']]))
-        
-        if hasattr(template, 'Condition'):
-            template.Condition = prefix + template.Condition
+            if condition is not None:
+                if hasattr(template, 'Condition'):
+                    old_condition = getattr(template, 'Condition')
+                    new_condition = condition["key"] + old_condition
+                    self.add_condition(new_condition,  And(Condition(old_condition), condition["value"]))
+                    setattr(template, 'Condition', new_condition)
+                else:
+                    setattr(template, 'Condition', condition["key"])
 
         if isinstance(template, Parameter):
             pass
@@ -241,7 +256,7 @@ class TemplateLoader(TemplateGenerator):
                         snippet = self._fix_export(snippet)
                         setattr(template, processed_prop, snippet)
 
-                    self._find_relations(snippet, template, processed_prop, to_replace, prefix)
+                    self._find_relations(snippet, template, processed_prop, to_replace, prefix, condition)
     
     def set_default_parameters(self, params):
         for title in self.parameters:
