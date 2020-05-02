@@ -1,8 +1,10 @@
-# How to install and use the Template macro in your AWS account
+# About
 
 The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates.
 
 This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
+
+# How to install and use the Template macro in your AWS account
 
 ## Deploying
 
