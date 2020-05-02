@@ -2,6 +2,8 @@
 
 The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates.
 
+This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
+
 ## Deploying
 
 1. You will need an S3 bucket to store the CloudFormation artifacts:
@@ -93,7 +95,7 @@ Properties:
 
 `Mode`
 
-Specifies whether to import the template inline or as `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` resource.
+Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
 _Required_: Yes
 
@@ -175,7 +177,7 @@ _Type_: Map of String
 
 `NotificationARNs`
 
-The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
@@ -202,7 +204,7 @@ _Minimum_: 1
 
 `TemplateBucket`
 
-The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+The name of the S3 Bucket where template from git is uploaded. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations.
 
 
 Conditional. Required if `Mode` is `Nested`
@@ -215,7 +217,7 @@ _Type_: String
 
 `TemplateKey`
 
-The path where template from git is saved in the S3 Bucket . Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+The path where template from git is saved in the S3 Bucket . Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations.
 
 
 Conditional. Required if `Mode` is `Nested`
@@ -276,7 +278,7 @@ Properties:
 
 `Mode`
 
-Specifies whether to import the template inline or as `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` resource.
+Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
 _Required_: Yes
 
@@ -328,7 +330,7 @@ _Type_: Map of String
 
 `NotificationARNs`
 
-The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+The Simple Notification Service (SNS) topic ARNs to publish stack related events. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
