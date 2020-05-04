@@ -12,7 +12,8 @@ PREFIX = "Template::"
 BRANCH_DEFAULT = 'master'
 TEMPLATE_NAME_DEFAULT = 'template.yaml'
 
-LAMBDA_ARN = os.environ["LAMBDA_ARN"] if "LAMBDA_ARN" in os.environ else "__main__"
+DEFAULT_BUCKET = os.environ["DEFAULT_BUCKET"] if "DEFAULT_BUCKET" in os.environ else "macro-template-default-${AWS::AccountId}-${AWS::Region}"
+
 s3 = boto3.client('s3')
 cm = boto3.client('codecommit')
 
@@ -77,25 +78,30 @@ def codecommit_import(request_id, name, properties, params, region):
 
     return document
 
-def upload_to_s3(bucket, key, tp_model, params):
-    value_bucket = params[bucket.data['Ref']] if isinstance(bucket, Ref) else bucket
-    value_key = params[key.data['Ref']] if isinstance(key, Ref) else key
-
+def upload_to_s3(bucket, key, tp_model, params, request_id):
     try:
+      if isinstance(bucket, Ref):
+        bucket = params[bucket.data['Ref']]
+      if isinstance(key, Ref):
+        key = params[key.data['Ref']]
+      if bucket is None:
+        bucket = DEFAULT_BUCKET
+        key = '{}/{}'.format(request_id, key)
+
       template = tp_model.to_json()
-      print(value_bucket, value_key)
-      s3.upload_fileobj(io.BytesIO(template.encode()), value_bucket, value_key) 
+      s3.upload_fileobj(io.BytesIO(template.encode()), bucket, key)
+
+      return Join("",['https://', bucket, '.s3.amazonaws.com/', key])
     except:
       print("Unable to upload Template to S3 Bucket.")       
 
-def get_stack_resource(tp_main_template, name, params, tp_model):
-    bucket = tp_main_template.resources[name].properties['TemplateBucket']
-    if 'TemplateKey' in tp_main_template.resources[name].properties:
-        key = tp_main_template.resources[name].properties['TemplateKey']
-    else:
-        key = tp_main_template.resources[name].properties['Path']
+def get_stack_resource(tp_main_template, name, params, tp_model, request_id):
+    bucket = tp_main_template.resources[name].properties.get('TemplateBucket', None)
+    key = tp_main_template.resources[name].properties.get('TemplateKey',\
+        tp_main_template.resources[name].properties.get('Path',\
+            tp_main_template.resources[name].properties.get('Key', None)))
 
-    upload_to_s3(bucket, key, tp_model, params)
+    templateurl = upload_to_s3(bucket, key, tp_model, params, request_id)
 
     nested_stack = cloudformation.Stack(title='NestedStack'+name)
     
@@ -109,7 +115,7 @@ def get_stack_resource(tp_main_template, name, params, tp_model):
         nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
     if 'TimeoutInMinutes' in tp_main_template.resources[name].properties:
         nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
-    nested_stack.TemplateURL = Join("",['https://', bucket, '.s3.amazonaws.com/', key])
+    nested_stack.TemplateURL = templateurl
 
     return nested_stack
 
@@ -164,7 +170,7 @@ def handle_template(request_id, template, params, region):
             if mode.lower() == "inline":
                 new_template += get_inline_resource(properties, tp_model, name, rule)
             if mode.lower() == "nested":
-                nested_stack = get_stack_resource(tp_main_template, name, params, tp_model)
+                nested_stack = get_stack_resource(tp_main_template, name, params, tp_model, request_id)
                 new_template.add_resource(nested_stack)
 
         else:
@@ -219,7 +225,7 @@ if __name__ == "__main__":
             },
             "BucketName": {
                 "Type": "String",
-                "Default": "example-bucket"
+                "Default": "macro-template-default-831650818513-us-east-1"
             },
             "TemplateKey": {
                 "Type": "String",

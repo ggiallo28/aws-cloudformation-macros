@@ -39,7 +39,6 @@ class S3(AWSObject):
 
     props = {
         'Mode': (basestring, True),
-        'Provider': (basestring, True),
         'Bucket': (basestring, True),
         'Key': (basestring, True),
         'Parameters': (dict, False),

@@ -1,6 +1,6 @@
 # Template Macro
 
-The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates.
+The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates. A typical use case for this macro might be to reuse Cloudformation configurations that let you manage a group of related resources as if they were a single resource.
 
 This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
 
@@ -106,8 +106,11 @@ If `Nested` mode is used Macro automatically uploads Template into S3 Bucket whe
 If `Inline` mode is used you can reference resource in imported Template using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html).
 
 For example, you can obtain the Arn of a resource inside imported template using:
+
 - !Ref Template.Resource.Arn
+
 you can reference resource inside imported template using:
+
 - !Ref Template.Resource
 
 _Required_: Yes
@@ -119,13 +122,13 @@ _Allowed Values_:  `Inline | Nested`
 
 `Provider`
 
-Specifies from where to import template.
+Specifies from where to import template. There are two valid values for the Provider field: Codecommit, GitHub. If the Provider field is Codecommit you must ensure that your lambda macro has the permission to clone the repository, please check the lambda role. If the Provider field is GitHub you need also to specify the Owner field and OAuthToken if you are referencing private repository. 
 
 _Required_: Yes
 
 _Type_: String
 
-_Allowed Values_:  `S3 | Codecommit | GitHub`
+_Allowed Values_:  `Codecommit | GitHub`
 
 `Repo`
 
@@ -160,7 +163,7 @@ _Type_: String
 
 `OAuthToken`
 
-Represents the GitHub authentication token that allows Macro to perform operations on your GitHub repository. 
+It is the GitHub authentication token that allows Macro to perform operations on your GitHub repository. 
 
 Conditional. Required if `Provider` is `GitHub`
 
@@ -217,15 +220,14 @@ _Minimum_: 1
 
 `TemplateBucket`
 
-The name of the S3 Bucket where template from git is uploaded. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations.
+The name of the S3 Bucket where template from git is uploaded. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations. The default bucket is created within macro transformation. 
 
 
-Conditional. Required if `Mode` is `Nested`
-
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: String
+
+_Default_: macro-template-default-<AccountId>-<Region>
 
 
 `TemplateKey`
@@ -233,12 +235,12 @@ _Type_: String
 The path where template from git is saved in the S3 Bucket . Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations.
 
 
-Conditional. Required if `Mode` is `Nested`
-
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: String
+
+_Default_: Path field
+
 
 ## Template::S3
 
@@ -251,10 +253,9 @@ To declare this entity in your AWS CloudFormation template use the following syn
 #### JSON
 ```
 {
-  "Type" : "Template::Git",
+  "Type" : "Template::S3",
   "Properties" : {
   	  "Mode": String,
-  	  "Provider": String,
   	  "Bucket": String,
   	  "Key": String,
       "Parameters" : {Key : Value, ...},
@@ -269,10 +270,9 @@ To declare this entity in your AWS CloudFormation template use the following syn
 
 #### YAML
 ```
-Type: Template::Git
+Type: Template::S3
 Properties: 
   Mode: String
-  Provider: String
   Bucket: String
   Key: String
   Parameters:
@@ -308,16 +308,6 @@ _Type_: String
 
 _Allowed Values_:  `Inline | Nested`
 
-
-`Provider`
-
-Specifies from where to import template.
-
-_Required_: Yes
-
-_Type_: String
-
-_Allowed Values_:  `S3 | Codecommit | GitHub`
 
 `Bucket`
 
@@ -379,15 +369,14 @@ _Minimum_: 1
 
 `TemplateBucket`
 
-The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations. The default bucket is created within macro transformation. 
 
 
-Conditional. Required if `Mode` is `Nested`
-
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: String
+
+_Default_: macro-template-default-<AccountId>-<Region>
 
 
 `TemplateKey`
@@ -395,12 +384,11 @@ _Type_: String
 The path where template from git is saved in the S3 Bucket . Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
 
 
-Conditional. Required if `Mode` is `Nested`
-
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: String
+
+_Default_: Key field
 
 ### Examples
 
@@ -908,6 +896,11 @@ Resources:
 
 # Work in Progress
 
-- Auto Tag Resource in the imported Template using Tag property.
-- Return Values for custom resources
+- auto tag resource in the imported template using tag property
+
+- recoursive include cloudformation templates
+
+- let user to provide git credentials as aws secret
+
+- extend cloudformation filed support, ex findinmap or metadata
 

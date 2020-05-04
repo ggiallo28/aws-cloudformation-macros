@@ -1,6 +1,12 @@
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
+
+  DefaultBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+       BucketName: !Sub "macro-template-default-${AWS::AccountId}-${AWS::Region}"
+
   TransformExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -34,6 +40,9 @@ Resources:
       Timeout: 300
       Layers: 
         - !Sub arn:aws:lambda:${AWS::Region}:553035198032:layer:git:11
+      Environment:
+        Variables:
+          DEFAULT_BUCKET: !Ref DefaultBucket
 
   Macro:
     Type: AWS::CloudFormation::Macro
