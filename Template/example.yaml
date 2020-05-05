@@ -16,7 +16,7 @@ Parameters:
     Default: macro-template-default-831650818513-us-east-1
   TemplateKey:
     Type: String
-    Default: Template/sns-topics-template.yaml
+    Default: Template/sns-topics-template.yaml 
   Environment:
     Type: String
     Default: prod

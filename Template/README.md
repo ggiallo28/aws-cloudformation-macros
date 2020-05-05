@@ -2,6 +2,8 @@
 
 The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates. A typical use case for this macro might be to reuse Cloudformation configurations that let you manage a group of related resources as if they were a single resource.
 
+You can recursive import Templates, you can use Template Resources inside imported Cloudformation Templates.
+
 This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
 
 # How to install and use the Macro in your AWS account
@@ -29,7 +31,13 @@ This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
         --capabilities CAPABILITY_IAM
     ```
 
-4. To test out the macro's capabilities, try launching the provided example template:
+4. Install all python requirements
+
+    ```shell
+    pip install -r source/requirements.txt -t source
+    ```
+
+5. To test out the macro's capabilities, try launching the provided example template:
 
     ```shell
     aws cloudformation deploy \
@@ -897,8 +905,6 @@ Resources:
 # Work in Progress
 
 - auto tag resource in the imported template using tag property
-
-- recoursive include cloudformation templates
 
 - let user to provide git credentials as aws secret
 
