@@ -19,7 +19,7 @@ Parameters:
     Default: Template/sns-topics-template.yaml 
   Environment:
     Type: String
-    Default: prod
+    Default: dev
 
 Conditions: 
   CreateResources: !Equals [ !Ref Environment, prod ]

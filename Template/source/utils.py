@@ -8,45 +8,8 @@ from troposphere.compat import policytypes
 from troposphere.validators import boolean, integer
 from troposphere import Template
 from cfn_flip import flip
-from collections.abc import Iterable 
-
-try:
-    basestring
-except NameError:
-    basestring = str
-
-class Git(AWSObject):
-    resource_type = "Template::Git"
-
-    props = {
-        'Mode': (basestring, True),
-        'Provider': (basestring, True),
-        'Repo': (basestring, True),
-        'Branch': (basestring, False),
-        'Owner': (basestring, False),
-        'OAuthToken': (basestring, False),
-        'Path': (basestring, True),
-        'Parameters': (dict, False),
-        'NotificationARNs': ([basestring], False),
-        'Tags': ((Tags, list), False),
-        'TimeoutInMinutes': (integer, False),
-        'TemplateBucket': (basestring, False),
-        'TemplateKey': (basestring, False),
-    }
-
-class S3(AWSObject):
-    resource_type = "Template::S3"
-
-    props = {
-        'Mode': (basestring, True),
-        'Bucket': (basestring, True),
-        'Key': (basestring, True),
-        'Parameters': (dict, False),
-        'NotificationARNs': ([basestring], False),
-        'Tags': ((Tags, list), False),
-        'TimeoutInMinutes': (integer, False),
-        'TemplateBucket': (basestring, False)
-    }
+from collections.abc import Iterable
+from resources import S3, Git
 
 class TemplateLoader(TemplateGenerator):
     __create_key = object()

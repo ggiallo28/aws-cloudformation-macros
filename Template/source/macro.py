@@ -1,424 +1,138 @@
-import os, io
+import sys, os, io, traceback
+
+sys.path.insert(1, 'libs')
+sys.path.insert(1, 'source/libs')
+from cfn_flip import flip, to_json
+from troposphere import cloudformation, Join, Ref
+
 import json
 import boto3
-from cfn_flip import flip, to_json
 import json
-import git
-import traceback
-from troposphere import cloudformation, Tags, Join, Ref
+import logging
+
 from utils import *
+from resources import *
 
-PREFIX = "Template::"
-BRANCH_DEFAULT = 'master'
-TEMPLATE_NAME_DEFAULT = 'template.yaml'
+DEFAULT_BUCKET = os.environ.get('DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
+logging.basicConfig(level=logging.INFO)   
 
-DEFAULT_BUCKET = os.environ["DEFAULT_BUCKET"] if "DEFAULT_BUCKET" in os.environ else "macro-template-default-831650818513-us-east-1"
+def s3_export(request_id, bucket_name, object_key, troposphere_template, template_params):
+    if isinstance(bucket_name, Ref):
+      bucket_name = params[bucket_name.data['Ref']]
 
-s3 = boto3.client('s3')
-cm = boto3.client('codecommit')
+    if isinstance(object_key, Ref):
+      object_key = params[object_key.data['Ref']]
 
-def get_param(name, properties, params):
-    value = properties.get(name)
-    return params[value["Ref"]] if type(value) == dict else value  
+    if bucket_name is None:
+        bucket_name = DEFAULT_BUCKET
+        object_key = '{}/{}'.format(request_id, object_key)
 
-def s3_import(request_id, name, properties, params, region):
-    bucket = get_param('Bucket', properties, params)
-    if bucket is None:
-      raise Exception('Bucket property must be provied when provider is S3.')
-    key = get_param('Key', properties, params)
-    if key is None:
-      raise Exception('Key property must be provied when provider is S3.')
+    logging.info('Upload {} in {}'.format(object_key, bucket_name))
+    template = troposphere_template.to_json()
+    s3.upload_fileobj(io.BytesIO(template.encode()), bucket_name, object_key)
 
-    file = "/tmp/" + request_id + "/" + key.replace("/", "_") 
+    return Join('',['https://', bucket_name, '.s3.amazonaws.com/', object_key])
 
-    with open(file, 'wb') as f:
-        s3.download_fileobj(bucket, key, f)
+def get_stack_template(request_id, resource_obj, resource_id, template_params, import_template):
+    bucket_name = resource_obj.properties.get('TemplateBucket', None)
+    object_key = resource_obj.properties.get('TemplateKey',\
+        resource_obj.properties.get('Path',\
+            resource_obj.properties.get('Key', None)))
 
-    with open(file) as f:
-        document = json.loads(to_json(f.read()))
+    nested_stack = cloudformation.Stack(title = 'NS' + resource_id)
 
-    return document
+    for attr in nested_stack.attributes:
+      if hasattr(resource_obj, attr):
+        setattr(nested_stack, attr, getattr(resource_obj, attr))
 
-def github_import(request_id, name, properties, params, region):
-    repo = get_param('Repo', properties, params)
-    branch = get_param('Branch', properties, params)
-    branch = BRANCH_DEFAULT if branch is None else branch
-    owner = get_param('Owner', properties, params)
-    if owner is None:
-      raise Exception('Owner property must be provied when provider is GitHub.')
-    token = get_param('OAuthToken', properties, params)
-    token = "" if token is None else '{}@'.format(token)
-    path = get_param('Path', properties, params)
-    path = TEMPLATE_NAME_DEFAULT if path is None else path
-
-    clone_dir = "/tmp/" + request_id  + "/github"
-    if not os.path.exists(clone_dir + "/" + repo):
-        repo_url =  "https://{}github.com/{}/{}.git".format(token, owner, repo)
-        git.Git(clone_dir).clone(repo_url)
-
-    file = clone_dir + "/" + repo + "/" + path
-    with open(file) as f:
-        document = json.loads(to_json(f.read()))   
-
-    return document
-    
-def codecommit_import(request_id, name, properties, params, region):
-    repo = get_param('Repo', properties, params)
-    branch = get_param('Branch', properties, params)
-    branch = BRANCH_DEFAULT if branch is None else branch
-    path = get_param('Path', properties, params)
-    path = TEMPLATE_NAME_DEFAULT if path is None else path
-
-    response = cm.get_file(repositoryName=repo, commitSpecifier = branch,  filePath=path)
-
-    try:
-      document = json.loads(response['fileContent'])
-    except:
-      document = json.loads(to_json(response['fileContent']))  
-
-    return document
-
-def upload_to_s3(bucket, key, tp_model, params, request_id):
-    try:
-      if isinstance(bucket, Ref):
-        bucket = params[bucket.data['Ref']]
-      if isinstance(key, Ref):
-        key = params[key.data['Ref']]
-      if bucket is None:
-        bucket = DEFAULT_BUCKET
-        key = '{}/{}'.format(request_id, key)
-
-      template = tp_model.to_json()
-      s3.upload_fileobj(io.BytesIO(template.encode()), bucket, key)
-
-      return Join("",['https://', bucket, '.s3.amazonaws.com/', key])
-    except Exception as e:
-        traceback.print_exc()
-        print("Unable to upload Template to S3 Bucket.")       
-
-def get_stack_resource(tp_main_template, name, params, tp_model, request_id):
-    bucket = tp_main_template.resources[name].properties.get('TemplateBucket', None)
-    key = tp_main_template.resources[name].properties.get('TemplateKey',\
-        tp_main_template.resources[name].properties.get('Path',\
-            tp_main_template.resources[name].properties.get('Key', None)))
-
-    templateurl = upload_to_s3(bucket, key, tp_model, params, request_id)
-
-    nested_stack = cloudformation.Stack(title='NestedStack'+name)
-    
-    if hasattr(tp_main_template.resources[name], 'Condition'):
-        nested_stack.Condition = tp_main_template.resources[name].Condition
-    if 'NotificationARNs' in tp_main_template.resources[name].properties:
-        nested_stack.NotificationARNs = tp_main_template.resources[name].properties['NotificationARNs']
-    if 'Parameters' in tp_main_template.resources[name].properties:
-        nested_stack.Parameters = tp_main_template.resources[name].properties['Parameters']
-    if 'Tags' in tp_main_template.resources[name].properties:
-        nested_stack.Tags = tp_main_template.resources[name].properties['Tags']
-    if 'TimeoutInMinutes' in tp_main_template.resources[name].properties:
-        nested_stack.TimeoutInMinutes = tp_main_template.resources[name].properties['TimeoutInMinutes']
-    nested_stack.TemplateURL = templateurl
+    for prop in nested_stack.propnames:
+      if prop in resource_obj.properties:
+        setattr(nested_stack, prop, resource_obj.properties.get(prop))
+    nested_stack.TemplateURL = s3_export(request_id, bucket_name, object_key, import_template, template_params)
 
     return nested_stack
 
-def get_inline_resource(properties, tp_model, name, rule):
-    if 'Parameters' in properties:
-        parameters = properties['Parameters']
-        tp_model.set_default_parameters(parameters)
-    tp_model.find_relations(to_replace=True, prefix=name, condition=rule)
-    tp_model.del_parameters()
+def get_attributes(resource_obj, main_template, resource_id):
+  rules = []
+  for attr in ['Condition']:
+    if hasattr(resource_obj, attr) and hasattr(main_template, 'conditions'):
+      key = getattr(resource_obj, attr)
+      rules += [{
+        'key' : key,
+        'value' : getattr(main_template, 'conditions').get(key)
+      }]
+      break
 
-    return tp_model
+  return rules[-1] if len(rules) > 0 else None
 
-switcher = {
-    'codecommit' : codecommit_import,
-    's3' : s3_import,
-    'github' : github_import
-}
 
-def handle_template(request_id, template, params, region):
-    tp_main_template = TemplateLoader.loads(template)
-    tp_main_template.find_relations()
+def get_inline_resources(resource_obj, resource_id, import_template, main_template):
+    import_parameters = resource_obj.properties.get('Parameters', {})
+    import_attributes = get_attributes(resource_obj, main_template, resource_id)
+
+    if 'Parameters' in resource_obj.properties:
+        parameters = resource_obj.properties['Parameters']
+        import_template.set_default_parameters(parameters)
+    import_template.find_relations(to_replace=True, prefix=resource_id, condition=import_attributes)
+    import_template.del_parameters()
+
+    return import_template
+
+def handle_template(request_id, main_template, template_params, aws_region):
+    main_template = TemplateLoader.loads(main_template)
+    main_template.find_relations()
     
-    new_template = TemplateLoader.init()
-    new_template.parameters = tp_main_template.parameters
-    new_template.conditions = tp_main_template.conditions
+    merge_template = TemplateLoader.init()
+    merge_template.parameters = main_template.parameters
+    merge_template.conditions = main_template.conditions
 
-    for name, resource in template.get("Resources", {}).items():
-        if resource["Type"].startswith(PREFIX):
-            properties = resource.get("Properties", {})
-
-            if 's3' in resource["Type"].lower():
-                model = switcher['s3'](request_id, name, properties, params, region)
-            if 'git' in resource["Type"].lower():
-                if "github" in properties["Provider"].lower():
-                    model = switcher['github'](request_id, name, properties, params, region)
-            if 'git' in resource["Type"].lower():
-                if "codecommit" in properties["Provider"].lower():
-                    model = switcher['codecommit'](request_id, name, properties, params, region) 
-          
-            tp_model = TemplateLoader.loads(model)
-            mode = properties.get("Mode", "Inline")
-            parameters = properties.get("Parameters", {})
-
-            rule = None
-            if  hasattr(tp_main_template.resources[name], 'Condition'):
-                key = tp_main_template.resources[name].Condition
-                rule = {
-                    "key": key,
-                    "value" : tp_main_template.conditions[key]
-                }
-
-            if mode.lower() == "inline":
-                new_template += get_inline_resource(properties, tp_model, name, rule)
-            if mode.lower() == "nested":
-                nested_stack = get_stack_resource(tp_main_template, name, params, tp_model, request_id)
-                new_template.add_resource(nested_stack)
-
-        else:
-            new_template.add_resource(tp_main_template.resources[name])
-
-
-    if any([isinstance(res, S3) or isinstance(res, Git) for res in new_template.resources.values()]):
-        print("Recursive Call.")
-        return handle_template(request_id, json.loads(new_template.to_json()), params, region)
-    return json.loads(new_template.to_json())
+    for resource_id, resource_obj in main_template.resources.items():
+      if not isinstance(resource_obj, Template):
+        merge_template.add_resource(resource_obj)
+      else:
+        mode = resource_obj.properties.get('Mode', 'Inline')
+        import_template = TemplateLoader.loads(get_template(request_id, resource_id, resource_obj, template_params, aws_region))
+        if mode.lower() == 'nested':
+          stack_template = get_stack_template(request_id, resource_obj, resource_id, template_params, import_template)
+          merge_template.add_resource(stack_template)
+        if mode.lower() == 'inline':
+          logging.warning('[{}] Inline mode is not yet fully supported.'.format(resource_id))
+          merge_template += get_inline_resources(resource_obj, resource_id, import_template, main_template)
+    if any([isinstance(res, S3) or isinstance(res, Git) for res in merge_template.resources.values()]):
+        logging.info('Recursive Call.')
+        return handle_template(request_id, json.loads(merge_template.to_json()), template_params, aws_region)
+    return json.loads(merge_template.to_json())
 
 def handler(event, context):
-    print(json.dumps(event))
+    logging.debug(json.dumps(event))
+
     macro_response = {
-        "fragment": event["fragment"],
-        "status": "success",
-        "requestId": event["requestId"]
+        'fragment': event['fragment'],
+        'status': 'success',
+        'requestId': event['requestId']
     }    
 
-    path = "/tmp/" + event["requestId"]
+    path = '/tmp/' + event['requestId']
 
     try:
         os.mkdir(path)
-        os.mkdir(path + "/github")
+        os.mkdir(path + '/github')
     except OSError:
-        print ("Creation of the directory %s failed" % path)
+        logging.warning ('Creation of the directory %s failed' % path)
     else:
-        print ("Successfully created the directory %s " % path)
+        logging.info ('Successfully created the directory %s ' % path)
 
     try:
-        macro_response["fragment"] = handle_template(event["requestId"], event["fragment"], event["templateParameterValues"], event["region"])
+        macro_response['fragment'] = handle_template(event['requestId'], event['fragment'], event['templateParameterValues'], event['region'])
+        logging.debug(json.dumps(macro_response['fragment']))
     except Exception as e:
         traceback.print_exc()
-        macro_response["status"] = "failure"
-        macro_response["errorMessage"] = str(e)
+        macro_response['status'] = 'failure'
+        macro_response['errorMessage'] = str(e)
 
     return macro_response
 
-if __name__ == "__main__":
-    handler({
-  "accountId": "831650818513",
-  "fragment": {
-    "Description": "Example Macro Template.",
-    "Parameters": {
-      "GitHubUser": {
-        "Type": "String",
-        "Default": "ggiallo28"
-      },
-      "RepositoryName": {
-        "Type": "String",
-        "Default": "aws-cloudformation-macros"
-      },
-      "BranchName": {
-        "Type": "String",
-        "Default": "master"
-      },
-      "BucketName": {
-        "Type": "String",
-        "Default": "macro-template-default-831650818513-us-east-1"
-      },
-      "TemplateKey": {
-        "Type": "String",
-        "Default": "Template/sns-topics-template.yaml"
-      },
-      "TemplateTemplateKey": {
-        "Type": "String",
-        "Default": "template-example.yaml"
-      },
-      "Environment": {
-        "Type": "String",
-        "Default": "prod"
-      }
-    },
-    "Resources": {
-      "HighPriorityAlarm": {
-        "Type": "AWS::SNS::Topic",
-        "Properties": {
-          "TopicName": {
-            "Fn::Sub": "High-Priority-Alarm-${Environment}"
-          }
-        }
-      },
-      "SNSTopiInlineCondition": {
-        "Type": "Template::Git",
-        "Condition": "CreateResources",
-        "Properties": {
-          "Mode": "Inline",
-          "Provider": "Github",
-          "Repo": {
-            "Ref": "RepositoryName"
-          },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          },
-          "Owner": {
-            "Ref": "GitHubUser"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-codecommit-inline-stack-condition",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      },
-      "SNSTopicNested": {
-        "Type": "Template::Git",
-        "Condition": "CreateResources",
-        "Properties": {
-          "Mode": "Nested",
-          "Provider": "Github",
-          "Repo": {
-            "Ref": "RepositoryName"
-          },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          },
-          "Owner": {
-            "Ref": "GitHubUser"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-github-nested-stack",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          },
-          "NotificationARNs": [
-            {
-              "Ref": "SNSTopiInlineCondition.UrgentPriorityAlarm"
-            },
-            {
-              "Ref": "HighPriorityAlarm"
-            }
-          ],
-          "Tags": [
-            {
-              "Key": "Environment",
-              "Value": {
-                "Ref": "Environment"
-              }
-            },
-            {
-              "Key": "TopicName",
-              "Value": {
-                "Ref": "SNSTopiInlineCondition.UrgentPriorityAlarm.TopicName"
-              }
-            }
-          ],
-          "TimeoutInMinutes": 1,
-          "TemplateBucket": {
-            "Ref": "BucketName"
-          },
-          "TemplateKey": {
-            "Ref": "TemplateKey"
-          }
-        }
-      },
-      "SNSTopicNestedDefault": {
-        "Type": "Template::Git",
-        "Condition": "CreateResources",
-        "Properties": {
-          "Mode": "Nested",
-          "Provider": "Github",
-          "Repo": {
-            "Ref": "RepositoryName"
-          },
-          "Branch": {
-            "Ref": "BranchName"
-          },
-          "Path": {
-            "Ref": "TemplateKey"
-          },
-          "Owner": {
-            "Ref": "GitHubUser"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-github-nested-stack-default-bucket",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      },
-      "SNSTopicS3": {
-        "Type": "Template::S3",
-        "Properties": {
-          "Mode": "Inline",
-          "Bucket": {
-            "Ref": "BucketName"
-          },
-          "Key": {
-            "Ref": "TemplateKey"
-          },
-          "Parameters": {
-            "Name": "sns-topic-template-s3-inline-stack",
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      },
-      "TemplateS3": {
-        "Type": "Template::S3",
-        "Properties": {
-          "Mode": "Inline",
-          "Bucket": {
-            "Ref": "BucketName"
-          },
-          "Key": {
-            "Ref": "TemplateTemplateKey"
-          },
-          "Parameters": {
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
-      }
-    },
-    "Conditions": {
-      "CreateResources": {
-        "Fn::Equals": [
-          {
-            "Ref": "Environment"
-          },
-          "prod"
-        ]
-      }
-    }
-  },
-  "transformId": "831650818513::Template",
-  "requestId": "c7fb26eb-9d51-4539-ac2f-3f7d83e5b014",
-  "region": "us-east-1",
-  "params": {},
-  "templateParameterValues": {
-    "GitHubUser": "ggiallo28",
-    "BucketName": "macro-template-default-831650818513-us-east-1",
-    "TemplateTemplateKey": "template-example.yaml",
-    "TemplateKey": "Template/sns-topics-template.yaml",
-    "Environment": "prod",
-    "RepositoryName": "aws-cloudformation-macros",
-    "BranchName": "master"
-  }
-}, None)
+if __name__ == '__main__':
+  with open('./source/event.json') as json_file:
+    event = json.load(json_file)
+  handler(event, None)
