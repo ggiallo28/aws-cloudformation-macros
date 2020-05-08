@@ -2,7 +2,7 @@
 
 The `Template` macro adds the ability to create CloudFormation resources from existing Cloudformation Templates. A typical use case for this macro might be to reuse Cloudformation configurations that let you manage a group of related resources as if they were a single resource.
 
-You can recursive import Templates, you can use Template Resources inside imported Cloudformation Templates.
+You can recursive import Templates, Template::S3 and Template::Git are allowed in imported Cloudformation Templates.
 
 This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
 
@@ -209,7 +209,7 @@ _Type_: List of String
 
 `Tags`
 
-Key-value pairs to associate with nested stack. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+Key-value pairs to associate with nested stack. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
@@ -252,7 +252,8 @@ _Default_: Path field
 
 ## Template::S3
 
-The Template::S3 imports Cloudformation Template from S3 Bucket.
+The Template::S3 imports Cloudformation Template from S3 Bucket. This is an improvemend over [AWS::Include Transform](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/create-reusable-transform-function-snippets-and-add-to-your-template-with-aws-include-transform.html), while AWS::Include let you import configuration snippet from S3 with Template::S3 you can import the whole Cloudforamtion Template.
+
 
 ### Syntax
 
@@ -358,7 +359,7 @@ _Type_: List of String
 
 `Tags`
 
-Key-value pairs to associate with nested stack. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+Key-value pairs to associate with nested stack. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
@@ -366,7 +367,7 @@ _Type_: List of [Tag](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserG
 
 `TimeoutInMinutes`
 
-The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
@@ -377,7 +378,7 @@ _Minimum_: 1
 
 `TemplateBucket`
 
-The name of the S3 Bucket where template from git is uploaded. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations. The default bucket is created within macro transformation. 
+The name of the S3 Bucket where template from git is uploaded. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations. The default bucket is created within macro transformation. 
 
 
 _Required_: No
@@ -389,7 +390,7 @@ _Default_: macro-template-default-<AccountId>-<Region>
 
 `TemplateKey`
 
-The path where template from git is saved in the S3 Bucket . Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` TemplateURL section for more informations.
+The path where template from git is saved in the S3 Bucket . Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) TemplateURL section for more informations.
 
 
 _Required_: No
