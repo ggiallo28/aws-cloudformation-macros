@@ -23,10 +23,6 @@
         "Type": "String",
         "Default": "Template/sns-topics-template.yaml"
       },
-      "TemplateTemplateKey": {
-        "Type": "String",
-        "Default": "template-example.yaml"
-      },
       "Environment": {
         "Type": "String",
         "Default": "prod"
@@ -71,7 +67,7 @@
         "Type": "Template::Git",
         "Condition": "CreateResources",
         "Properties": {
-          "Mode": "Nested",
+          "Mode": "Inline",
           "Provider": "Github",
           "Repo": {
             "Ref": "RepositoryName"
@@ -91,28 +87,22 @@
               "Ref": "Environment"
             }
           },
-          "NotificationARNs": [
-            {
-              "Ref": "SNSTopiInlineCondition.UrgentPriorityAlarm"
-            },
-            {
-              "Ref": "HighPriorityAlarm"
+          "NotificationARNs": [{
+            "Ref": "Template::SNSTopiInlineCondition::UrgentPriorityAlarm"
+          }, {
+            "Ref": "HighPriorityAlarm"
+          }],
+          "Tags": [{
+            "Key": "Environment",
+            "Value": {
+              "Ref": "Environment"
             }
-          ],
-          "Tags": [
-            {
-              "Key": "Environment",
-              "Value": {
-                "Ref": "Environment"
-              }
-            },
-            {
-              "Key": "TopicName",
-              "Value": {
-                "Ref": "SNSTopiInlineCondition.UrgentPriorityAlarm.TopicName"
-              }
+          }, {
+            "Key": "TopicName",
+            "Value": {
+              "Fn::GetAtt": ["Template::SNSTopiInlineCondition::UrgentPriorityAlarm", "TopicName"]
             }
-          ],
+          }],
           "TimeoutInMinutes": 1,
           "TemplateBucket": {
             "Ref": "BucketName"
@@ -125,8 +115,9 @@
       "SNSTopicNestedDefault": {
         "Type": "Template::Git",
         "Condition": "CreateResources",
+        "DependsOn": "Template::SNSTopicNested",
         "Properties": {
-          "Mode": "Nested",
+          "Mode": "Inline",
           "Provider": "Github",
           "Repo": {
             "Ref": "RepositoryName"
@@ -165,44 +156,23 @@
             }
           }
         }
-      },
-      "TemplateS3": {
-        "Type": "Template::S3",
-        "Properties": {
-          "Mode": "Inline",
-          "Bucket": {
-            "Ref": "BucketName"
-          },
-          "Key": {
-            "Ref": "TemplateTemplateKey"
-          },
-          "Parameters": {
-            "Environment": {
-              "Ref": "Environment"
-            }
-          }
-        }
       }
     },
     "Conditions": {
       "CreateResources": {
-        "Fn::Equals": [
-          {
-            "Ref": "Environment"
-          },
-          "prod"
-        ]
+        "Fn::Equals": [{
+          "Ref": "Environment"
+        }, "prod"]
       }
     }
   },
   "transformId": "831650818513::Template",
-  "requestId": "c7fb26eb-9d51-4539-ac2f-3f7d83e5b014",
+  "requestId": "613c529e-c148-48ba-877c-9e6a867f68a6",
   "region": "us-east-1",
   "params": {},
   "templateParameterValues": {
     "GitHubUser": "ggiallo28",
     "BucketName": "macro-template-default-831650818513-us-east-1",
-    "TemplateTemplateKey": "template-example.yaml",
     "TemplateKey": "Template/sns-topics-template.yaml",
     "Environment": "prod",
     "RepositoryName": "aws-cloudformation-macros",

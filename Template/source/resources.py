@@ -10,12 +10,14 @@ import logging
 import boto3
 import git
 
+from simulator import *
+
 s3 = boto3.client('s3')
 cm = boto3.client('codecommit')
 
 BRANCH_DEFAULT = 'master'
 TEMPLATE_NAME_DEFAULT = 'template.yaml'
-ASSERT_MESSAGE = "{} Value is Invalid! Currently you can only !Ref a parameter or use a string."
+ASSERT_MESSAGE = "Template format error: {} value is invalid. The value must not depend on any resources or imported values"
 
 try:
     basestring
@@ -141,12 +143,16 @@ switcher = {
 }
 
 def get_template(request_id, resource_id, resource_obj, template_params, aws_region):
-	if isinstance(resource_obj, Git):
-		provider = resource_obj.properties["Provider"].lower()
+    if isinstance(resource_obj, Git):
+    	provider = resource_obj.properties["Provider"].lower()
 
-	if isinstance(resource_obj, S3):
-		provider = 's3'
+    if isinstance(resource_obj, S3):
+    	provider = 's3'
 
-	return switcher[provider](request_id, resource_id, resource_obj, template_params, aws_region)	
+    template = switcher[provider](request_id, resource_id, resource_obj, template_params, aws_region)
+
+    cfn = Simulator(template, {**template_params, **resource_obj.get_value('Parameters', {}, default={})})
+
+    return cfn.simulate()
 
 

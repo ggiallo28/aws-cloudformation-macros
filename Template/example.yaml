@@ -19,7 +19,7 @@ Parameters:
     Default: Template/sns-topics-template.yaml 
   Environment:
     Type: String
-    Default: dev
+    Default: prod
 
 Conditions: 
   CreateResources: !Equals [ !Ref Environment, prod ]
@@ -49,7 +49,7 @@ Resources:
     Type: Template::Git
     Condition: CreateResources
     Properties:
-      Mode: Nested
+      Mode: Inline
       Provider: Github
       Repo: !Ref RepositoryName
       Branch: !Ref BranchName
@@ -59,13 +59,13 @@ Resources:
         Name: 'sns-topic-template-github-nested-stack'
         Environment: !Ref Environment
       NotificationARNs:
-        - !Ref SNSTopiInlineCondition.UrgentPriorityAlarm
+        - !Ref Template::SNSTopiInlineCondition::UrgentPriorityAlarm
         - !Ref HighPriorityAlarm
       Tags: 
         - Key: Environment
           Value: !Ref Environment
         - Key: TopicName
-          Value: !Ref SNSTopiInlineCondition.UrgentPriorityAlarm.TopicName
+          Value: !GetAtt Template::SNSTopiInlineCondition::UrgentPriorityAlarm.TopicName
       TimeoutInMinutes: 1
       TemplateBucket: !Ref BucketName
       TemplateKey: !Ref TemplateKey
@@ -73,8 +73,9 @@ Resources:
   SNSTopicNestedDefault:
     Type: Template::Git
     Condition: CreateResources
+    DependsOn: Template::SNSTopicNested
     Properties:
-      Mode: Nested
+      Mode: Inline
       Provider: Github
       Repo: !Ref RepositoryName
       Branch: !Ref BranchName
