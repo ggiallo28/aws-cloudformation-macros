@@ -33,6 +33,8 @@ class Simulator():
         self.template = self.evaluate_custom_expression(self.template)
         
         self.template = self.handle_conditions(self.template)
+
+        self.template = self.arrayfy_depends_on(self.template)
         
         self.template = self.cleanup(self.template, excude_clean)
             
@@ -55,55 +57,62 @@ class Simulator():
             for match in matches:
                 param = match.group()
                 value = self.values.get(param[2:-1], param)
-                data = data.replace(param, value)  
+                data = data.replace(param, str(value))
         return data
     
     def _split(self, delimiter, text):
         try:
             return text.split(delimiter)
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _split {}'.format(e))
             logging.warning('Fault assumption: _split("{}",{})'.format(delimiter, text))
             return { "Fn::Split" : [ delimiter, text ] }
     
     def _equals(self, a, b):
         try:
             return a == b
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _equals {}'.format(e))
             logging.warning('Fault assumption: _equals({},{})'.format(a, b))
             return { "Fn::Equals": [ a, b ] }
         
     def _or(self, *args):
         try:
             return any(args)
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _or {}'.format(e))
             logging.warning('Fault assumption: _or({})'.format(args))
             return { "Fn::Or": args }
         
     def _not(self, arg):
         try:
             return not arg
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _not {}'.format(e))
             logging.warning('Fault assumption: _not({})'.format(arg))
             return { "Fn::Not": [arg] }
     
     def _and(self, *args):
         try:
             return all(args)
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _and {}'.format(e))
             logging.warning('Fault assumption: _and({})'.format(args))
             return { "Fn::And": args }
     
     def _join(self, delimiter, words):
         try:
             return delimiter.join(words)
-        except:
-            logging.warning('Fault assumption: _join("{}", {})'.format(delimiter, words))
+        except Exception as e: 
+            logging.error('Fault assumption: _join {}'.format(e))
+            logging.warning('Fault assumption: _join("{}", {}).'.format(delimiter, words))
             return { "Fn::Join" : [ delimiter, words ] }
     
     def _if(self, condition_name, value_if_true, value_if_false):
         try:
             return value_if_true if self._condition(condition_name) else value_if_false
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _if {}'.format(e))
             logging.warning('Fault assumption: _if({}, {}, {})'.format(cond, opt_true, opt_false))
             return { "Fn::If": [condition_name, value_if_true, value_if_false] }
         
@@ -113,25 +122,28 @@ class Simulator():
                 return self.template['Mappings'][map_name][top_level_key][second_level_key]
             else:
                 return self.template['Mappings'][map_name][top_level_key]
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _find {}'.format(e))
             logging.warning('Fault assumption: _find({}, {}, {})'.format(map_name, top_level_key, second_level_key))
             return { "Fn::FindInMap" : list(filter(None,[ map_name, top_level_key, second_level_key])) }            
     
     def _select(self, index, words):
         try:
-            return words[index]
-        except:
+            return words[int(index)]
+        except Exception as e: 
+            logging.error('Fault assumption: _select {}'.format(e))
             logging.warning('Fault assumption: _select({}, {})'.format(index, words))
-            return { "Fn::Select" : [ index, words ] }
+            return { "Fn::Select" : [ int(index), words ] }
     
     def _sub(self, args):
         try:
             if type(args) == list:
-                return self._join("", *args)
+                return self._join("", args)
             if re.findall(self.__params_regexp, args):
                 return {"Fn::Sub" : args}
             return args
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _sub {}'.format(e))
             logging.warning('Fault assumption: _sub({})'.format(args))
             return { "Fn::Sub" : args }
         
@@ -140,7 +152,8 @@ class Simulator():
             cond_expr = self.template['Conditions'][condition_name]
             eval_expr = self.evaluate_expression(cond_expr)
             return eval_expr
-        except:
+        except Exception as e: 
+            logging.error('Fault assumption: _condition {}'.format(e))
             logging.warning('Fault assumption: _condition({})'.format(condition_name))
             return condition_name
 
@@ -154,8 +167,8 @@ class Simulator():
             return self._equals(*evaluated_params)
 
         if type(data) == dict and "Fn::Or" in data:
-            evaluated_params = self.evaluate_expression(data["Fn::Equals"])
-            return self._equals(*evaluated_params)
+            evaluated_params = self.evaluate_expression(data["Fn::Or"])
+            return self._or(*evaluated_params)
         
         if type(data) == dict and "Fn::Not" in data:
             evaluated_params = self.evaluate_expression(data["Fn::Not"])
@@ -245,6 +258,24 @@ class Simulator():
             }
         
         return data
+
+    def arrayfy_depends_on(self, data):
+        if type(data) == dict:
+            return dict(
+                filter(None, map(self.arrayfy_depends_on, data.items())))
+        if type(data) == list:
+            return list(filter(
+                None, map(self.arrayfy_depends_on, data)))
+        if type(data) == tuple:
+            key, value = data
+            if key == 'DependsOn':
+                if type(value) == list:
+                    return (key, value)
+                else:
+                    return (key, [value])
+            else:
+                return (key, self.arrayfy_depends_on(value))
+        return data        
         
 
     def handle_conditions(self, data):
@@ -252,8 +283,8 @@ class Simulator():
             return dict(
                 filter(None, map(self.handle_conditions, data.items())))
         if type(data) == list:
-            return filter(
-                None, map(self.handle_conditions, value))
+            return list(filter(
+                None, map(self.handle_conditions, data)))
         if type(data) == tuple:
             key, value = data
             if type(value) == dict:

@@ -49,7 +49,7 @@ def get_stack_template(request_id, resource_obj, resource_id, template_params, i
 
 class TemplateLoader(TemplateGenerator):
     __create_key = object()
-    __prefix = 'Template::'
+    __macro_name = 'Template::'
     
     @classmethod
     def loads(cls, json_string):
@@ -113,7 +113,12 @@ class TemplateLoader(TemplateGenerator):
                 value["Name"] = { "Fn::Join" : [ "-", [ self.prefix,  value["Name"] ] ] }
             if key in self.logical_ids:
                 key = self.prefix + key
-            return (key, self._translate(value)) 
+            return (key, self._translate(value))
+
+        if type(data) == str:
+            if data.replace(self.__macro_name, "") in self.logical_ids:
+                data = self.__macro_name + self.prefix + data.replace(self.__macro_name, "")            
+
         return data
 
     def translate(self, prefix):
@@ -127,25 +132,68 @@ class TemplateLoader(TemplateGenerator):
         json_string = self._translate(json_string)
         return self.loads(json_string)
 
-    def set_attrs(self, top_level_resource, import_templates):
-        if hasattr(top_level_resource, 'DependsOn'):
-            value = getattr(top_level_resource, 'DependsOn')
-            if self.__prefix in value:
-                key = value.replace(self.__prefix, "")
-                if key in import_templates:
-                    _, related_inline_template = import_templates[key]
-                    value = [title for title in related_inline_template.resources]
-                    setattr(top_level_resource, 'DependsOn', value)
-                else:
-                    setattr(top_level_resource, 'DependsOn', key) # Is Nested Resource   
+    def _get_values(self, key, import_templates):
+        key = key.replace(self.__macro_name, "")
+        if key in import_templates:
+            _, related_inline_template = import_templates[key]
+            return [title for title in related_inline_template.resources]
+        else:
+            return [key] # Is Nested Resource
 
-        for attr in top_level_resource.attributes:
-            if attr == 'Condition':
-                continue
+    def set_attrs(self, top_level_resource, import_templates):
+
+        if hasattr(top_level_resource, 'DeletionPolicy'):
+            ## Override
+            value = getattr(top_level_resource, 'DeletionPolicy')
             for title in self.resources:
-                if hasattr(top_level_resource, attr):
-                    value = getattr(top_level_resource, attr)
-                    setattr(self.resources[title], attr, value)
+                setattr(self.resources[title], 'DeletionPolicy', value)
+
+        if hasattr(top_level_resource, 'UpdateReplacePolicy'):
+            ## Override
+            value = getattr(top_level_resource, 'UpdateReplacePolicy')
+            for title in self.resources:
+                setattr(self.resources[title], 'UpdateReplacePolicy', value)
+
+        if hasattr(top_level_resource, 'DependsOn'):
+            ## Append
+            top_depends_on = getattr(top_level_resource, 'DependsOn')
+
+            values = []
+            for value in top_depends_on:
+                if self.__macro_name in value:
+                    values += self._get_values(value, import_templates)
+            values += [value for value in top_depends_on if not self.__macro_name in value]
+
+            for title in self.resources:
+                if hasattr(self.resources[title], 'DependsOn'):
+                    bottom_depends_on = getattr(self.resources[title], 'DependsOn')
+                    setattr(self.resources[title], 'DependsOn', values + bottom_depends_on)
+                else:
+                    setattr(self.resources[title], 'DependsOn', values)
+
+    def resolve_attrs(self, import_templates):
+        for title in self.resources:
+            if hasattr(self.resources[title], 'DependsOn'):
+                depends_on = getattr(self.resources[title], 'DependsOn')
+
+                depends_on_template = [d for d in depends_on if self.__macro_name in d]
+                depends_on_aws = [d for d in depends_on if self.__macro_name not in d]
+
+                for depends_on_value in depends_on_template:
+                    key = depends_on_value.replace(self.__macro_name, "")
+                    top_level_resource, inline_template = import_templates.get(key,
+                        (self.resources.get(key, None), self)
+                    )
+
+                    if top_level_resource and inline_template == self: # Local Template Resource, Depends on Nested Stack
+                        depends_on_aws.append(key)
+
+                    elif top_level_resource and inline_template != self: # Imported Resource, Depends on Inline Stack
+                        values = list(inline_template.resources.keys())
+                        depends_on_aws += values
+
+                depends_on_aws = list(set(depends_on_aws))
+                setattr(self.resources[title], 'DependsOn', depends_on_aws)
 
 #    @staticmethod
 #    def __setattr(bucket, key, value):

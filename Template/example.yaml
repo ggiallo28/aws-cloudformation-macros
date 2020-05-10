@@ -75,7 +75,7 @@ Resources:
     Condition: CreateResources
     DependsOn: Template::SNSTopicNested
     Properties:
-      Mode: Inline
+      Mode: Nested
       Provider: Github
       Repo: !Ref RepositoryName
       Branch: !Ref BranchName

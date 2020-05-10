@@ -45,6 +45,9 @@ def handle_template(request_id, main_template, template_params, aws_region):
           import_templates = {**import_templates, **{ resource_id : (resource_obj, import_template) }}
           logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
+
+    merge_template.resolve_attrs(import_templates)
+
     for key in import_templates:
         top_level_resource, inline_template = import_templates[key]
         inline_template.set_attrs(top_level_resource, import_templates)
