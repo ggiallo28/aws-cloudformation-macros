@@ -13,11 +13,12 @@ from utils import *
 from resources import *
 from simulator import *
 
-logging.basicConfig(level=logging.INFO)   
+logging.basicConfig(level=logging.INFO)
+
 
 def handle_template(main_template):
     main_template = TemplateLoader.loads(main_template)
-    
+
     merge_template = TemplateLoader.init()
     merge_template.parameters = main_template.parameters
     merge_template.set_version()
@@ -35,13 +36,19 @@ def handle_template(main_template):
                 stack_template = resource_obj.get_stack_template()
                 merge_template.add_resource(stack_template)
 
-                logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
+                logging.info('Add Template Resource {}, Mode={}'.format(
+                    resource_id, mode))
 
             if mode.lower() == 'inline':
                 import_template = TemplateLoader.loads(resource_obj.get_template())
                 import_template = import_template.translate(prefix=resource_id)
 
-                import_templates = {**import_templates, **{ resource_id : (resource_obj, import_template) }}
+                import_templates = {
+                    **import_templates,
+                    **{
+                        resource_id: (resource_obj, import_template)
+                    }
+                }
 
                 logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
@@ -52,13 +59,12 @@ def handle_template(main_template):
         inline_template.set_attrs(top_level_resource, import_templates)
         merge_template += inline_template
 
-    print(merge_template.to_yaml())
-
     if merge_template.is_custom():
         logging.info('Recursive Call.')
         return handle_template(json.loads(merge_template.to_json()))
 
     return json.loads(merge_template.to_json())
+
 
 def create_local_path(requestId):
     path = '/tmp/' + requestId
@@ -66,10 +72,11 @@ def create_local_path(requestId):
         os.mkdir(path)
         os.mkdir(path + '/github')
     except OSError:
-        logging.warning ('Creation of the directory %s failed' % path)
+        logging.warning('Creation of the directory %s failed' % path)
     else:
-        logging.info ('Successfully created the directory %s ' % path)
+        logging.info('Successfully created the directory %s ' % path)
     return requestId
+
 
 def handler(event, context):
     logging.debug("Input:", json.dumps(event))
@@ -85,7 +92,7 @@ def handler(event, context):
         'fragment': template,
         'status': 'success',
         'requestId': request_id
-    } 
+    }
 
     Template.aws_cfn_request_id = request_id
     Template.template_params = parameters
@@ -100,6 +107,7 @@ def handler(event, context):
         macro_response['errorMessage'] = str(e)
 
     return macro_response
+
 
 if __name__ == '__main__':
     with open('./source/event.json') as json_file:

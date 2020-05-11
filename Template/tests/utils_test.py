@@ -229,12 +229,12 @@ class TestAttrsMethods(unittest.TestCase):
         merge_template_json = json.loads(merge_template.to_json())
         self.assertEqual(merge_template_json['Resources']['SNSTopicNestedDefault']['DependsOn'], ['HighPriorityAlarm'])
 
-    #def test_is_custom(self):
-    #    template = TemplateLoader.init()      
-    #    template.add_resource(self.main_template.resources['HighPriorityAlarm'])
-    #    self.assertFalse(template.is_custom())
-    #    template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
-    #    self.assertTrue(template.is_custom())
+    def test_is_custom(self):
+        template = TemplateLoader.init()      
+        template.add_resource(self.main_template.resources['HighPriorityAlarm'])
+        self.assertFalse(template.is_custom())
+        template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
+        self.assertTrue(template.is_custom())
 
 if __name__ == '__main__':
     unittest.main()

@@ -25,17 +25,18 @@ try:
 except NameError:
     basestring = str
 
+
 class Template(AWSObject):
     resource_type = 'Template'
 
-    global aws_cfn_request_id 
+    global aws_cfn_request_id
     global template_params
     global aws_region
 
     def get_value(self, key, default=None):
         value = self.properties.get(key)
         if hasattr(value, 'Ref'):
-        	value = self.template_params[value['Ref']]
+            value = self.template_params[value['Ref']]
         return default if value in [None, ""] else value
 
     def s3_import(self):
@@ -68,7 +69,9 @@ class Template(AWSObject):
         assert type(branch) == str, ASSERT_MESSAGE.format('Branch')
         assert type(path) == str, ASSERT_MESSAGE.format('Path')
 
-        response = cm.get_file(repositoryName=repo, commitSpecifier = branch, filePath=path)
+        response = cm.get_file(repositoryName=repo,
+                               commitSpecifier=branch,
+                               filePath=path)
 
         template = json.loads(to_json(response['fileContent']))
 
@@ -86,7 +89,8 @@ class Template(AWSObject):
 
         owner = self.get_value('Owner')
         if owner is None:
-          raise Exception('Owner property must be provied when provider is GitHub.')
+            raise Exception(
+                'Owner property must be provied when provider is GitHub.')
 
         assert type(repo) == str, ASSERT_MESSAGE.format('Repo')
         assert type(branch) == str, ASSERT_MESSAGE.format('Branch')
@@ -94,22 +98,23 @@ class Template(AWSObject):
         assert type(token) == str, ASSERT_MESSAGE.format('Token')
         assert type(owner) == str, ASSERT_MESSAGE.format('Owner')
 
-        clone_dir = '/tmp/' + self.aws_cfn_request_id  + '/github'
+        clone_dir = '/tmp/' + self.aws_cfn_request_id + '/github'
         if not os.path.exists(clone_dir + '/' + repo):
-            repo_url =  'https://{}github.com/{}/{}.git'.format(token, owner, repo)
+            repo_url = 'https://{}github.com/{}/{}.git'.format(
+                token, owner, repo)
             git.Git(clone_dir).clone(repo_url)
 
         file = clone_dir + '/' + repo + '/' + path
         with open(file) as f:
-            template = json.loads(to_json(f.read()))   
+            template = json.loads(to_json(f.read()))
 
         return template
 
     def get_template(self):
         switcher = {
-            's3' : self.s3_import,
-            'codecommit' : self.codecommit_import,
-            'github' : self.github_import
+            's3': self.s3_import,
+            'codecommit': self.codecommit_import,
+            'github': self.github_import
         }
 
         if isinstance(self, Git):
@@ -120,7 +125,10 @@ class Template(AWSObject):
 
         template = switcher[provider]()
 
-        cfn = Simulator(template, {**self.template_params, **self.get_value('Parameters', default={})})
+        cfn = Simulator(template, {
+            **self.template_params,
+            **self.get_value('Parameters', default={})
+        })
 
         return cfn.simulate()
 
@@ -129,7 +137,7 @@ class Template(AWSObject):
         object_key = self.get_value('TemplateKey',\
             self.get_value('Path',\
                 self.get_value('Key')))
-        logging.info('Upload {} in {}'.format(object_key, bucket_name))      
+        logging.info('Upload {} in {}'.format(object_key, bucket_name))
 
         if isinstance(bucket_name, Ref):
             bucket_name = self.template_params[bucket_name.data['Ref']]
@@ -142,21 +150,24 @@ class Template(AWSObject):
             object_key = '{}/{}'.format(self.aws_cfn_request_id, object_key)
 
         import_template = json.dumps(self.get_template())
-        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name, object_key)
+        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name,
+                          object_key)
 
-        return Join('',['https://', bucket_name, '.s3.amazonaws.com/', object_key])
-        
+        return Join(
+            '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key])
+
     def get_stack_template(self):
-        nested_stack = cloudformation.Stack(title = self.title)
+        nested_stack = cloudformation.Stack(title=self.title)
         for attr in nested_stack.attributes:
-          if hasattr(self, attr):
-            setattr(nested_stack, attr, getattr(self, attr))
+            if hasattr(self, attr):
+                setattr(nested_stack, attr, getattr(self, attr))
         for prop in nested_stack.propnames:
-          if prop in self.properties:
-            setattr(nested_stack, prop, self.properties.get(prop))
+            if prop in self.properties:
+                setattr(nested_stack, prop, self.properties.get(prop))
         nested_stack.TemplateURL = self.s3_export()
 
         return nested_stack
+
 
 class Git(Template):
     resource_type = 'Template::Git'
@@ -170,13 +181,13 @@ class Git(Template):
         'Owner': (basestring, False),
         'OAuthToken': (basestring, False),
         'Parameters': (dict, False),
-
         'NotificationARNs': ([basestring], False),
         'Tags': ((Tags, list), False),
         'TimeoutInMinutes': (integer, False),
         'TemplateBucket': (basestring, False),
         'TemplateKey': (basestring, False)
     }
+
 
 class S3(Template):
     resource_type = 'Template::S3'
@@ -186,10 +197,8 @@ class S3(Template):
         'Bucket': (basestring, True),
         'Key': (basestring, True),
         'Parameters': (dict, False),
-
         'NotificationARNs': ([basestring], False),
         'Tags': ((Tags, list), False),
         'TimeoutInMinutes': (integer, False),
         'TemplateBucket': (basestring, False)
     }
-
