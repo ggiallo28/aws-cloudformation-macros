@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SNS Topics for alarms
+Parameters:
+  Email:
+    Type: String
+    Default: "nmsek@hi2.in"
+  Name:
+    Type: String
+  Environment:
+    Type: String
+
+Conditions: 
+  CreateResources: !Equals [ !Ref Environment, prod ] 
+
+Resources:
+
+  UrgentPriorityAlarm:
+    Type: "AWS::SNS::Topic"
+    Properties: 
+      DisplayName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}
+      Subscription:
+        - Endpoint: !Ref Email
+          Protocol: email
+      TopicName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}
+
+Outputs:
+  UrgentPriorityAlarm: 
+    Description: Urgent priority SNS topic ARN 
+    Value: !Ref UrgentPriorityAlarm
+    Export:
+      Name:
+        !Sub "${AWS::StackName}-urgent-${Environment}"

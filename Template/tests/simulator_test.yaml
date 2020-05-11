@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-use1
+    us-west-1:
+      AMI: ami-usw1
+    us-west-2:
+      AMI: ami-usw2
+Parameters:
+  EnvType:
+    Default: test
+    Type: String
+    AllowedValues:
+      - prod
+      - dev
+      - test
+  NameIndex:
+    Default: 0
+    Type: Number
+Conditions:
+  CreateProdResources: !Equals
+    - !Ref 'EnvType'
+    - prod
+  CreateDevResources: !Equals
+    - !Ref 'EnvType'
+    - dev
+  OrTest: !Or
+    - !Condition 'CreateProdResources'
+    - !Condition 'CreateDevResources'
+  NonProd: !Not
+    - !Condition 'CreateProdResources'
+  AndTest: !And
+    - !Condition 'CreateProdResources'
+    - !Condition 'CreateDevResources'
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      FindInMapTest: !FindInMap
+        - RegionMap
+        - !Ref 'AWS::Region'
+        - AMI
+      NestedIfTest: !If
+        - CreateProdResources
+        - c1.forprod
+        - !If
+          - CreateDevResources
+          - m1.forDevstuff
+          - m1.forOtherEnvs
+      SelectTest: !Select
+        - !Ref 'NameIndex'
+        - - apples
+          - grapes
+          - oranges
+          - mangoes
+      JoinTest: !Join
+        - ':'
+        - - a
+          - b
+          - c
+      SubTest: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${NameIndex}'
+      SubTestArray: !Sub
+        - www.${NameIndex}
+        - !Sub '${EnvType}'
+      SplitTest: !Split
+        - ':'
+        - a:b:c
+      SubStackName: !Sub '${AWS::StackName}-low-${EnvType}'
+      SubStackNameRegion: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${AWS::StackName}'
+      PseudoParam: !Ref 'AWS::Region'
+      CustomRef: !Ref 'Template::TemplateName::ResourceName'
+      CustomGetAtt: !GetAtt 'Template::TemplateName::ResourceName.Arn'
+      UserData: !Base64
+        Fn::Join:
+          - "\n"
+          - - '#!/bin/bash -xe'
+            - yum update -y aws-cfn-bootstrap
+            - !Sub '/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource
+              LaunchConfig --configsets wordpress_install --region ${AWS::Region}
+              ${EnvType}'
+            - !Sub '/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource
+              WebServerGroup --region ${AWS::Region} ${NameIndex}'
+  ProdInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: EC2Instance
+    Properties:
+      Name: ProdOnly
+    Condition: CreateProdResources
+  DependsOnResource:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - ProdInstance
+    Properties:
+      Name: ProdOnly
+    Condition: CreateProdResources
+  NonProdInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      Name: aNonProdInstance
+    Condition: NonProd

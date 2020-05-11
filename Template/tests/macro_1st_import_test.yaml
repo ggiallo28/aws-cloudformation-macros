@@ -23,25 +23,7 @@ Resources:
           Protocol: email
       TopicName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}
 
-  HighPriorityAlarm:
-    Type: "AWS::SNS::Topic"
-    Properties: 
-      DisplayName: !Sub ${Name}-High-Priority-Alarm-${Environment}
-      Subscription:
-        - Endpoint: !Ref Email
-          Protocol: email
-      TopicName: !Sub ${Name}-High-Priority-Alarm-${Environment}
-
-  MediumPriorityAlarm:
-    Type: "AWS::SNS::Topic"
-    Properties: 
-      DisplayName: !Sub ${Name}-Medium-Priority-Alarm-${Environment}
-      Subscription:
-        - Endpoint: !Ref Email
-          Protocol: email
-      TopicName: !Sub ${Name}-Medium-Priority-Alarm-${Environment}
-
-  SNSTopiInlineCondition:
+  LastRecursiveCall:
     Type: Template::Git
     Condition: CreateResources
     Properties:
@@ -63,6 +45,13 @@ Resources:
         - Endpoint: !Ref Email
           Protocol: email
       TopicName: !Sub ${Name}-Low-Priority-Alarm-${Environment}
+      Tags: 
+        - 
+          Key: TestRef
+          Value: !Ref Template::LastRecursiveCall::UrgentPriorityAlarm
+        - 
+          Key: !GetAtt
+          Value: Template::LastRecursiveCall::UrgentPriorityAlarm.TopicName
 
 Outputs:
   UrgentPriorityAlarm: 
@@ -71,18 +60,6 @@ Outputs:
     Export:
       Name:
         !Sub "${AWS::StackName}-urgent-${Environment}"
-  HighPriorityAlarm: 
-    Description: High priority SNS topic ARN 
-    Value: !Ref HighPriorityAlarm
-    Export:
-      Name:
-        !Sub "${AWS::StackName}-high-${Environment}"
-  MediumPriorityAlarm: 
-    Description: Medium priority SNS topic ARN 
-    Value: !Ref MediumPriorityAlarm
-    Export:
-      Name:
-        !Sub "${AWS::StackName}-medium-${Environment}"
   LowPriorityAlarm: 
     Description: Low priority SNS topic ARN 
     Value: !Ref LowPriorityAlarm

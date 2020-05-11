@@ -13,10 +13,9 @@ from utils import *
 from resources import *
 from simulator import *
 
-DEFAULT_BUCKET = os.environ.get('DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
 logging.basicConfig(level=logging.INFO)   
 
-def handle_template(request_id, main_template, template_params, aws_region):
+def handle_template(main_template):
     main_template = TemplateLoader.loads(main_template)
     
     merge_template = TemplateLoader.init()
@@ -26,24 +25,25 @@ def handle_template(request_id, main_template, template_params, aws_region):
     import_templates = {}
 
     for resource_id, resource_obj in main_template.resources.items():
-      if not isinstance(resource_obj, Template):
-        merge_template.add_resource(resource_obj)
-        logging.info('Add AWS Resource {}'.format(resource_id))
+        if not isinstance(resource_obj, Template):
+            merge_template.add_resource(resource_obj)
+            logging.info('Add AWS Resource {}'.format(resource_id))
+        else:
+            mode = resource_obj.properties.get('Mode', 'Inline')
 
-      else:
-        mode = resource_obj.properties.get('Mode', 'Inline')
-        import_template = get_template(request_id, resource_id, resource_obj, template_params, aws_region)
-        import_template = TemplateLoader.loads(import_template)
+            if mode.lower() == 'nested':
+                stack_template = resource_obj.get_stack_template()
+                merge_template.add_resource(stack_template)
 
-        if mode.lower() == 'nested':
-          stack_template = get_stack_template(request_id, resource_obj, resource_id, template_params, import_template)
-          merge_template.add_resource(stack_template)
-          logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
-        if mode.lower() == 'inline':
-          import_template = import_template.translate(prefix=resource_id)
-          import_templates = {**import_templates, **{ resource_id : (resource_obj, import_template) }}
-          logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
+                logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
+            if mode.lower() == 'inline':
+                import_template = TemplateLoader.loads(resource_obj.get_template())
+                import_template = import_template.translate(prefix=resource_id)
+
+                import_templates = {**import_templates, **{ resource_id : (resource_obj, import_template) }}
+
+                logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
     merge_template.resolve_attrs(import_templates)
 
@@ -52,25 +52,16 @@ def handle_template(request_id, main_template, template_params, aws_region):
         inline_template.set_attrs(top_level_resource, import_templates)
         merge_template += inline_template
 
-    if any([isinstance(res, S3) or isinstance(res, Git) for res in merge_template.resources.values()]):
+    print(merge_template.to_yaml())
+
+    if merge_template.is_custom():
         logging.info('Recursive Call.')
-        return handle_template(request_id, json.loads(merge_template.to_json()), template_params, aws_region)
+        return handle_template(json.loads(merge_template.to_json()))
+
     return json.loads(merge_template.to_json())
 
-def handler(event, context):
-    logging.info(json.dumps(event))
-
-    cfn = Simulator(event['fragment'], event['templateParameterValues'])
-    template = cfn.simulate(excude_clean=['Parameters'])
-
-    macro_response = {
-        'fragment': template,
-        'status': 'success',
-        'requestId': event['requestId']
-    }    
-
-    path = '/tmp/' + event['requestId']
-
+def create_local_path(requestId):
+    path = '/tmp/' + requestId
     try:
         os.mkdir(path)
         os.mkdir(path + '/github')
@@ -78,10 +69,31 @@ def handler(event, context):
         logging.warning ('Creation of the directory %s failed' % path)
     else:
         logging.info ('Successfully created the directory %s ' % path)
+    return requestId
+
+def handler(event, context):
+    logging.debug("Input:", json.dumps(event))
+
+    request_id = create_local_path(event['requestId'])
+    parameters = event['templateParameterValues']
+
+    cfn = Simulator(event['fragment'], event['templateParameterValues'])
+    template = cfn.simulate(excude_clean=['Parameters'])
+    aws_region = event['region']
+
+    macro_response = {
+        'fragment': template,
+        'status': 'success',
+        'requestId': request_id
+    } 
+
+    Template.aws_cfn_request_id = request_id
+    Template.template_params = parameters
+    Template.aws_region = aws_region
 
     try:
-        macro_response['fragment'] = handle_template(event['requestId'], template, event['templateParameterValues'], event['region'])
-        logging.debug(json.dumps(macro_response['fragment']))
+        macro_response['fragment'] = handle_template(template)
+        logging.debug("Output:", json.dumps(event))
     except Exception as e:
         traceback.print_exc()
         macro_response['status'] = 'failure'
@@ -90,6 +102,7 @@ def handler(event, context):
     return macro_response
 
 if __name__ == '__main__':
-  with open('./source/event.json') as json_file:
-    event = json.load(json_file)
-  print(json.dumps(handler(event, None)))
+    with open('./source/event.json') as json_file:
+        event = json.load(json_file)
+    handler(event, None)
+    #print(json.dumps(handler(event, None)))

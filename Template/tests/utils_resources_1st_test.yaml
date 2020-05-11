@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SNS Topics for alarms
+Parameters:
+  Email:
+    Type: String
+    Default: nmsek@hi2.in
+  Name:
+    Type: String
+  Environment:
+    Type: String
+Conditions:
+  CreateResources: !Equals
+    - !Ref 'Environment'
+    - prod
+Resources:
+  UrgentPriorityAlarm:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${Name}-Urgent-Priority-Alarm-${Environment}'
+      Subscription:
+        - Endpoint: !Ref 'Email'
+          Protocol: email
+      TopicName: !Sub '${Name}-Urgent-Priority-Alarm-${Environment}'
+  HighPriorityAlarm:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${Name}-High-Priority-Alarm-${Environment}'
+      Subscription:
+        - Endpoint: !Ref 'Email'
+          Protocol: email
+      TopicName: !Sub '${Name}-High-Priority-Alarm-${Environment}'
+  MediumPriorityAlarm:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${Name}-Medium-Priority-Alarm-${Environment}'
+      Subscription:
+        - Endpoint: !Ref 'Email'
+          Protocol: email
+      TopicName: !Sub '${Name}-Medium-Priority-Alarm-${Environment}'
+  LowPriorityAlarm:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${Name}-Low-Priority-Alarm-${Environment}'
+      Subscription:
+        - Endpoint: !Ref 'Email'
+          Protocol: email
+      TopicName: !Sub '${Name}-Low-Priority-Alarm-${Environment}'
+  SNSTopiInlineCondition:
+    Type: Template::Git
+    Condition: CreateResources
+    Properties:
+      Mode: Inline
+      Provider: Github
+      Repo: !Ref 'RepositoryName'
+      Branch: !Ref 'BranchName'
+      Path: !Ref 'TemplateKey'
+      Owner: !Ref 'GitHubUser'
+      Parameters:
+        Name: sns-topic-template-codecommit-inline-stack-condition
+        Environment: !Ref 'Environment'
+  SNSTopiInlineDependsOn:
+    Type: Template::Git
+    Condition: CreateResources
+    DependsOn: Template::SNSTopiInlineCondition
+    Properties:
+      Mode: Inline
+      Provider: Github
+      Repo: !Ref 'RepositoryName'
+      Branch: !Ref 'BranchName'
+      Path: !Ref 'TemplateKey'
+      Owner: !Ref 'GitHubUser'
+      Parameters:
+        Name: sns-topic-template-codecommit-inline-stack-condition
+        Environment: !Ref 'Environment'
+  SNSTopicNestedDefault:
+    Type: Template::Git
+    Condition: CreateResources
+    DependsOn: Template::SNSTopiInlineCondition
+    Properties:
+      Mode: Nested
+      Provider: Github
+      Repo: !Ref 'RepositoryName'
+      Branch: !Ref 'BranchName'
+      Path: !Ref 'TemplateKey'
+      Owner: !Ref 'GitHubUser'
+      Parameters:
+        Name: sns-topic-template-github-nested-stack-default-bucket
+        Environment: !Ref 'Environment'
+      NotificationARNs:
+        - !Ref 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm'
+        - !Ref 'HighPriorityAlarm'
+      Tags:
+        - Key: Environment
+          Value: !Ref 'Environment'
+        - Key: TopicName
+          Value: !GetAtt 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm.TopicName'
+      TimeoutInMinutes: 1
+      TemplateBucket: !Ref 'BucketName'
+      TemplateKey: !Ref 'TemplateKey'
+Outputs:
+  UrgentPriorityAlarmArn:
+    Description: Urgent priority SNS topic ARN
+    Value: !Ref 'UrgentPriorityAlarm'
+    Export:
+      Name: !Sub '${AWS::StackName}-urgent-${Environment}'
+  HighPriorityAlarmArn:
+    Description: High priority SNS topic ARN
+    Value: !Ref 'HighPriorityAlarm'
+    Export:
+      Name: !Sub '${AWS::StackName}-high-${Environment}'
+  MediumPriorityAlarmArn:
+    Description: Medium priority SNS topic ARN
+    Value: !Ref 'MediumPriorityAlarm'
+    Export:
+      Name: !Sub '${AWS::StackName}-medium-${Environment}'
+  LowPriorityAlarmArn:
+    Description: Low priority SNS topic ARN
+    Value: !Ref 'LowPriorityAlarm'
+    Export:
+      Name: !Sub '${AWS::StackName}-low-${Environment}'
