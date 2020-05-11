@@ -3,7 +3,6 @@ import sys, os, io, traceback
 sys.path.insert(1, 'libs')
 sys.path.insert(1, 'source/libs')
 from cfn_flip import flip, to_json
-from troposphere import cloudformation, Join, Ref
 
 import json
 import boto3

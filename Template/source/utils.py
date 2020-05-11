@@ -10,6 +10,12 @@ from troposphere import Template
 from cfn_flip import flip
 from collections.abc import Iterable
 from resources import S3, Git
+from troposphere import cloudformation, Join, Ref
+import logging
+import boto3
+import io
+
+s3 = boto3.client('s3')
 
 def s3_export(request_id, bucket_name, object_key, troposphere_template, template_params):
     if isinstance(bucket_name, Ref):
