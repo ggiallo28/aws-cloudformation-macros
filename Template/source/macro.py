@@ -16,6 +16,8 @@ from simulator import *
 logging.basicConfig(level=logging.INFO)
 
 
+logging.info = print
+
 def handle_template(main_template):
     main_template = TemplateLoader.loads(main_template)
 
@@ -100,6 +102,8 @@ def handler(event, context):
 
     try:
         macro_response['fragment'] = handle_template(template)
+        macro_response['fragment'] = TemplateLoader.loads(macro_response['fragment']).evaluate_custom_expression()
+
         logging.debug("Output:", json.dumps(event))
     except Exception as e:
         traceback.print_exc()
@@ -110,7 +114,7 @@ def handler(event, context):
 
 
 if __name__ == '__main__':
-    with open('./source/event.json') as json_file:
+    with open('./test/event.json') as json_file:
         event = json.load(json_file)
-    handler(event, None)
-    #print(json.dumps(handler(event, None)))
+    #handler(event, None)
+    print(json.dumps(handler(event, None)))

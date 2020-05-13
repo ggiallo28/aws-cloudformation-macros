@@ -67,7 +67,7 @@
         "Type": "Template::Git",
         "Condition": "CreateResources",
         "Properties": {
-          "Mode": "Inline",
+          "Mode": "Nested",
           "Provider": "Github",
           "Repo": {
             "Ref": "RepositoryName"
