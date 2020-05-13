@@ -9,8 +9,8 @@ import boto3
 import json
 import logging
 
-from utils import *
 from resources import *
+from utils import *
 from simulator import *
 
 logging.basicConfig(level=logging.INFO)

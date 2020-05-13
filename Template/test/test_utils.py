@@ -56,8 +56,15 @@ class TestUtilsMethods(unittest.TestCase):
     def test_evaluate_custom_expression(self):
         tdata = json.loads(self.import_template.to_json())
 
-        self.assertEqual(tdata['Resources']['SNSTopicNestedDefault']['Properties']['NotificationARNs'][0]['Ref'], 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm')
-        self.assertEqual(tdata['Resources']['SNSTopicNestedDefault']['Properties']['Tags'][1]['Value']['Fn::GetAtt'], [ 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm', 'TopicName' ])
+        self.assertEqual(
+            tdata['Resources']['SNSTopicNestedDefault']['Properties']['NotificationARNs'][0]['Ref'],
+            'Template::SNSTopiInlineCondition::UrgentPriorityAlarm'
+        )
+
+        self.assertEqual(
+            tdata['Resources']['SNSTopicNestedDefault']['Properties']['Tags'][1]['Value']['Fn::GetAtt'],
+            [ 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm', 'TopicName' ]
+        )
       
     def test_translate(self):
         tdata = json.loads(self.import_template.translate(prefix=self._prefix).to_json())
@@ -72,10 +79,25 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertTrue('Fn::Join' in tdata['Outputs'][self._prefix + 'MediumPriorityAlarmArn']['Export']['Name'])
         self.assertTrue('Fn::Join' in tdata['Outputs'][self._prefix + 'LowPriorityAlarmArn']['Export']['Name'])
 
-        self.assertEqual(tdata['Outputs'][self._prefix + 'UrgentPriorityAlarmArn']['Export']['Name']['Fn::Join'], ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-urgent-prod'}]])
-        self.assertEqual(tdata['Outputs'][self._prefix + 'HighPriorityAlarmArn']['Export']['Name']['Fn::Join'], ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-high-prod'}]])
-        self.assertEqual(tdata['Outputs'][self._prefix + 'MediumPriorityAlarmArn']['Export']['Name']['Fn::Join'], ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-medium-prod'}]])
-        self.assertEqual(tdata['Outputs'][self._prefix + 'LowPriorityAlarmArn']['Export']['Name']['Fn::Join'], ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-low-prod'}]])
+        self.assertEqual(
+            tdata['Outputs'][self._prefix + 'UrgentPriorityAlarmArn']['Export']['Name']['Fn::Join'], 
+            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-urgent-prod'}]]
+        )
+
+        self.assertEqual(
+            tdata['Outputs'][self._prefix + 'HighPriorityAlarmArn']['Export']['Name']['Fn::Join'],
+            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-high-prod'}]]
+        )
+
+        self.assertEqual(
+            tdata['Outputs'][self._prefix + 'MediumPriorityAlarmArn']['Export']['Name']['Fn::Join'],
+            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-medium-prod'}]]
+        )
+
+        self.assertEqual(
+            tdata['Outputs'][self._prefix + 'LowPriorityAlarmArn']['Export']['Name']['Fn::Join'],
+            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-low-prod'}]]
+        )
 
         self.assertTrue(self._prefix + 'UrgentPriorityAlarm' in tdata['Resources'])
         self.assertTrue(self._prefix + 'HighPriorityAlarm' in tdata['Resources'])
@@ -84,9 +106,20 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertTrue(self._prefix + 'SNSTopiInlineCondition' in tdata['Resources'])
         self.assertTrue(self._prefix + 'SNSTopicNestedDefault' in tdata['Resources'])
 
-        self.assertEqual(tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['NotificationARNs'][1]['Ref'], self._prefix + 'HighPriorityAlarm')
-        self.assertEqual(tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['NotificationARNs'][0]['Ref'], 'Template::'+self._prefix+'::SNSTopiInlineCondition::UrgentPriorityAlarm')
-        self.assertEqual(tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['Tags'][1]['Value']['Fn::GetAtt'], [ 'Template::'+self._prefix+'::SNSTopiInlineCondition::UrgentPriorityAlarm', 'TopicName' ])
+        self.assertEqual(
+            tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['NotificationARNs'][1]['Ref'],
+            self._prefix + 'HighPriorityAlarm'
+        )
+
+        self.assertEqual(
+            tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['NotificationARNs'][0]['Ref'], 
+            'Template::{}::SNSTopiInlineCondition::UrgentPriorityAlarm'.format(self._prefix)
+        )
+
+        self.assertEqual(
+            tdata['Resources'][self._prefix + 'SNSTopicNestedDefault']['Properties']['Tags'][1]['Value']['Fn::GetAtt'],
+            [ 'Template::{}::SNSTopiInlineCondition::UrgentPriorityAlarm'.format(self._prefix), 'TopicName' ]
+        )
 
 
 class TestAttrsMethods(unittest.TestCase):
@@ -134,8 +167,6 @@ class TestAttrsMethods(unittest.TestCase):
             'DoubleSNSTopicS3' : (cls.main_template.resources['DoubleSNSTopicS3'], cls.DoubleSNSTopicS3),
             'Nested2InlineTarget' : (cls.main_template.resources['Nested2InlineTarget'], cls.Nested2InlineTarget),
         }
-        cls.resources_list = ['UrgentPriorityAlarm', 'HighPriorityAlarm', 'MediumPriorityAlarm', 'LowPriorityAlarm', 'SNSTopiInlineCondition', 'SNSTopiInlineDependsOn', 'SNSTopicNestedDefault']
-
 
     def test_set_attrs_inline_dependson_nested(self):
         # Inline DependsOn Nested
@@ -144,13 +175,38 @@ class TestAttrsMethods(unittest.TestCase):
         inline_template.set_attrs(top_level_resource, self.import_templates)
         inline_template_json = json.loads(inline_template.to_json())
 
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn'], ['SNSTopicNested'])
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'HighPriorityAlarm']['DependsOn'], ['SNSTopicNested'])
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'MediumPriorityAlarm']['DependsOn'], ['SNSTopicNested'])
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'LowPriorityAlarm']['DependsOn'], ['SNSTopicNested'])
+        self.assertEqual(
+            inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn'], 
+            ['SNSTopicNested']
+        )
+
+        self.assertEqual(
+            inline_template_json['Resources'][top_level_resource_id + 'HighPriorityAlarm']['DependsOn'], 
+            ['SNSTopicNested']
+        )
+
+        self.assertEqual(
+            inline_template_json['Resources'][top_level_resource_id + 'MediumPriorityAlarm']['DependsOn'], 
+            ['SNSTopicNested']
+        )
+
+        self.assertEqual(
+            inline_template_json['Resources'][top_level_resource_id + 'LowPriorityAlarm']['DependsOn'], 
+            ['SNSTopicNested']
+        )
         
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'SNSTopicNestedDefault']['DependsOn'], ['SNSTopicNested', 'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)])
-        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'SNSTopiInlineDependsOn']['DependsOn'], ['SNSTopicNested', 'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)])     
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'SNSTopicNestedDefault']['DependsOn']), 
+            sorted([
+                'SNSTopicNested', 
+                'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)
+            ])
+        )
+
+        self.assertEqual(inline_template_json['Resources'][top_level_resource_id + 'SNSTopiInlineDependsOn']['DependsOn'], [
+            'SNSTopicNested', 
+            'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)]
+        )     
 
     def test_set_attrs_inline_dependson_nested_or_aws(self):
         # Inline DependsOn Inline & Inline DependsOn AWS
@@ -160,13 +216,91 @@ class TestAttrsMethods(unittest.TestCase):
         inline_template.set_attrs(top_level_resource, self.import_templates)
         inline_template_json = json.loads(inline_template.to_json())
 
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn']), 
+            sorted([
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
 
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['HighPriorityAlarm']))
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'HighPriorityAlarm']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['HighPriorityAlarm']))
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'MediumPriorityAlarm']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['HighPriorityAlarm']))
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'LowPriorityAlarm']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['HighPriorityAlarm']))
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'SNSTopicNestedDefault']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)] + ['HighPriorityAlarm']))
-        self.assertEqual(sorted(inline_template_json['Resources'][top_level_resource_id + 'SNSTopiInlineDependsOn']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list] + ['Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id)] + ['HighPriorityAlarm']))
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'HighPriorityAlarm']['DependsOn']), 
+            sorted([
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
+
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'MediumPriorityAlarm']['DependsOn']), 
+            sorted([
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
+
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'LowPriorityAlarm']['DependsOn']), 
+            sorted([
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
+
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'SNSTopicNestedDefault']['DependsOn']), 
+            sorted([
+                'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id),
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
+
+        self.assertEqual(
+            sorted(inline_template_json['Resources'][top_level_resource_id + 'SNSTopiInlineDependsOn']['DependsOn']), 
+            sorted([
+                'Template::{}::SNSTopiInlineCondition'.format(top_level_resource_id),
+                'HighPriorityAlarm',
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
 
     def test_resolve_attrs_nested_dependson_inline(self):
         # Nested DependsOn Inline
@@ -178,7 +312,19 @@ class TestAttrsMethods(unittest.TestCase):
 
         merge_template.resolve_attrs(self.import_templates)
         merge_template_json = json.loads(merge_template.to_json())
-        self.assertEqual(sorted(merge_template_json['Resources']['Nested2InlineSource']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list]))
+
+        self.assertEqual(
+            sorted(merge_template_json['Resources']['Nested2InlineSource']['DependsOn']), 
+            sorted([
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
 
     def test_resolve_attrs_nested_dependson_nested(self):
         # Nested DependsOn Nested
@@ -190,7 +336,11 @@ class TestAttrsMethods(unittest.TestCase):
 
         merge_template.resolve_attrs(self.import_templates)
         merge_template_json = json.loads(merge_template.to_json())
-        self.assertEqual(merge_template_json['Resources']['Nested2NestedSource']['DependsOn'], ['Template::Nested2NestedTarget'])
+
+        self.assertEqual(
+            merge_template_json['Resources']['Nested2NestedSource']['DependsOn'], 
+            ['Template::Nested2NestedTarget']
+        )
 
     def test_resolve_attrs_aws_dependson_inline(self):
         # AWS DependsOn Inline
@@ -202,7 +352,19 @@ class TestAttrsMethods(unittest.TestCase):
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarm'])
         merge_template.resolve_attrs(self.import_templates)
         merge_template_json = json.loads(merge_template.to_json())
-        self.assertEqual(sorted(merge_template_json['Resources']['HighPriorityAlarm']['DependsOn']), sorted(['{}{}'.format(dependson_resource_id, value) for value in self.resources_list]))
+
+        self.assertEqual(
+            sorted(merge_template_json['Resources']['HighPriorityAlarm']['DependsOn']), 
+            sorted([
+                '{}UrgentPriorityAlarm'.format(dependson_resource_id),
+                '{}HighPriorityAlarm'.format(dependson_resource_id),
+                '{}MediumPriorityAlarm'.format(dependson_resource_id),
+                '{}LowPriorityAlarm'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineCondition'.format(dependson_resource_id),
+                'Template::{}SNSTopiInlineDependsOn'.format(dependson_resource_id),
+                'Template::{}SNSTopicNestedDefault'.format(dependson_resource_id)
+            ])
+        )
 
     def test_resolve_attrs_aws_dependson_nested(self):
         # AWS DependsOn Nested
@@ -215,7 +377,11 @@ class TestAttrsMethods(unittest.TestCase):
         merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
         merge_template.resolve_attrs(self.import_templates)
         merge_template_json = json.loads(merge_template.to_json())
-        self.assertEqual(merge_template_json['Resources']['HighPriorityAlarmDependsOnNested']['DependsOn'], ['Template::SNSTopicNested'])
+
+        self.assertEqual(
+            merge_template_json['Resources']['HighPriorityAlarmDependsOnNested']['DependsOn'], 
+            ['Template::SNSTopicNested']
+        )
 
     def test_resolve_attrs_nested_dependson_aws(self):
         # Nested DependsOn AWS
@@ -228,7 +394,11 @@ class TestAttrsMethods(unittest.TestCase):
         merge_template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
         merge_template.resolve_attrs(self.import_templates)
         merge_template_json = json.loads(merge_template.to_json())
-        self.assertEqual(merge_template_json['Resources']['SNSTopicNestedDefault']['DependsOn'], ['HighPriorityAlarm'])
+
+        self.assertEqual(
+            merge_template_json['Resources']['SNSTopicNestedDefault']['DependsOn'],
+            ['HighPriorityAlarm']
+        )
 
     def test_is_custom(self):
         template = TemplateLoader.init()      

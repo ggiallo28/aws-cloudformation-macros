@@ -1,7 +1,8 @@
-from troposphere.template_generator import TemplateGenerator
 from resources import *
+from troposphere.template_generator import TemplateGenerator
 import boto3
-import os, json
+import os
+import json
 
 DEFAULT_BUCKET = os.environ.get(
     'DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
@@ -12,6 +13,8 @@ class TemplateLoader(TemplateGenerator):
     __create_key = object()
     TemplateGenerator.add_version = TemplateGenerator.set_version
     TemplateGenerator.add_description = TemplateGenerator.set_description
+
+    Ref.is_ref = lambda x: True
 
     @classmethod
     def loads(cls, json_string):

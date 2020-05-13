@@ -2,7 +2,6 @@ import re
 import logging
 logging.basicConfig(level=logging.INFO)
 
-
 class Simulator():
     __params_regexp = r'\${AWS::[a-zA-Z0-9_]*}|\${[a-zA-Z0-9_]*}'
     __prefix = 'Template::'
