@@ -8,13 +8,25 @@ Parameters:
     Type: String
   Environment:
     Type: String
+  GitHubUser:
+    Type: String
+    Default: ggiallo28
+  RepositoryName:
+    Type: String
+    Default: aws-cloudformation-macros
+  BranchName:
+    Type: String
+    Default: master
+  TemplateKey:
+    Type: String
+    Default: Template/sns-topics-template.yaml 
 
 Conditions: 
   CreateResources: !Equals [ !Ref Environment, prod ] 
 
 Resources:
 
-  UrgentPriorityAlarm:
+  UrgentPriorityAlarm:  
     Type: "AWS::SNS::Topic"
     Properties: 
       DisplayName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}
@@ -23,7 +35,7 @@ Resources:
           Protocol: email
       TopicName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}
 
-  LastRecursiveCall:
+  LastRecursiveCall: 
     Type: Template::Git
     Condition: CreateResources
     Properties:
@@ -37,7 +49,7 @@ Resources:
         Name: 'sns-topic-template-codecommit-inline-stack-condition'
         Environment: !Ref Environment
 
-  LowPriorityAlarm:
+  LowPriorityAlarm: 
     Type: "AWS::SNS::Topic"
     Properties: 
       DisplayName: !Sub ${Name}-Low-Priority-Alarm-${Environment}
@@ -50,8 +62,8 @@ Resources:
           Key: TestRef
           Value: !Ref Template::LastRecursiveCall::UrgentPriorityAlarm
         - 
-          Key: !GetAtt
-          Value: Template::LastRecursiveCall::UrgentPriorityAlarm.TopicName
+          Key: TestGetAtt
+          Value: !GetAtt Template::LastRecursiveCall::UrgentPriorityAlarm.TopicName
 
 Outputs:
   UrgentPriorityAlarm: 

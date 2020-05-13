@@ -26,12 +26,19 @@ except NameError:
     basestring = str
 
 
-class Template(AWSObject):
-    resource_type = 'Template'
-
+class Template(AWSObject): 
     global aws_cfn_request_id
     global template_params
     global aws_region
+
+    macro_name = 'Template'
+    macro_separator = '::'
+    macro_prefix = macro_name + macro_separator
+
+    resources = []
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.resources.append(cls.resource_type)
 
     def get_value(self, key, default=None):
         value = self.properties.get(key)
@@ -168,9 +175,8 @@ class Template(AWSObject):
 
         return nested_stack
 
-
 class Git(Template):
-    resource_type = 'Template::Git'
+    resource_type = Template.macro_prefix + 'Git'
 
     props = {
         'Mode': (basestring, True),
@@ -190,7 +196,7 @@ class Git(Template):
 
 
 class S3(Template):
-    resource_type = 'Template::S3'
+    resource_type = Template.macro_prefix + 'S3'
 
     props = {
         'Mode': (basestring, True),
@@ -202,3 +208,5 @@ class S3(Template):
         'TimeoutInMinutes': (integer, False),
         'TemplateBucket': (basestring, False)
     }
+
+

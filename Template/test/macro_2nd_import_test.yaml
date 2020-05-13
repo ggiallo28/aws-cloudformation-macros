@@ -14,7 +14,7 @@ Conditions:
 
 Resources:
 
-  UrgentPriorityAlarm:
+  UrgentPriorityAlarm: 
     Type: "AWS::SNS::Topic"
     Properties: 
       DisplayName: !Sub ${Name}-Urgent-Priority-Alarm-${Environment}

@@ -1,6 +1,6 @@
 import sys
-sys.path.insert(1, '../source/libs')
-sys.path.insert(1, '../source')
+sys.path.insert(1, 'source/libs')
+sys.path.insert(1, 'source')
 
 import json
 import unittest
@@ -13,12 +13,12 @@ from utils import *
 
 from troposphere import Join
 
-with open('utils_resources_1st_test.yaml') as f:
+with open('test/utils_resources_1st_test.yaml') as f:
     content = f.readlines()
 
 import_template_dict = json.loads(to_json(''.join(content)))
 
-with open('utils_resources_top_test.yaml') as f:
+with open('test/utils_resources_top_test.yaml') as f:
     content = f.readlines()
 
 main_template_dict = json.loads(to_json(''.join(content)))

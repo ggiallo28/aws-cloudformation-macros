@@ -86,7 +86,7 @@ Resources:
   SNSTopicS3:
     Type: Template::S3
     Condition: CreateResources
-    DependsOn: Template::SNSTopiInlineCondition
+    DependsOn: Template::SNSTopiInlineCondition 
     Properties:
       Mode: Inline
       Bucket: !Ref BucketName

@@ -36,11 +36,11 @@ def handle_template(main_template):
                 stack_template = resource_obj.get_stack_template()
                 merge_template.add_resource(stack_template)
 
-                logging.info('Add Template Resource {}, Mode={}'.format(
-                    resource_id, mode))
+                logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
             if mode.lower() == 'inline':
-                import_template = TemplateLoader.loads(resource_obj.get_template())
+                import_template = resource_obj.get_template()
+                import_template = TemplateLoader.loads(import_template)
                 import_template = import_template.translate(prefix=resource_id)
 
                 import_templates = {
@@ -59,7 +59,7 @@ def handle_template(main_template):
         inline_template.set_attrs(top_level_resource, import_templates)
         merge_template += inline_template
 
-    if merge_template.is_custom():
+    if merge_template.contains_custom_resources():
         logging.info('Recursive Call.')
         return handle_template(json.loads(merge_template.to_json()))
 
