@@ -7,8 +7,8 @@ import unittest
 from cfn_flip import to_json
 from unittest.mock import MagicMock
 
-from simulator import *
 from resources import *
+from simulator import *
 from utils import *
 
 from troposphere import Join
@@ -64,3 +64,12 @@ class TestUtilsMethods(unittest.TestCase):
 
         self.assertEqual(nested_stack.resource['DependsOn'],
                          ['Template::SNSTopiInlineCondition'])
+
+    def test_get_aws_cfn_request_id(self):
+        self.assertEqual(self.main_template.resources['SNSTopicS3'].get_aws_cfn_request_id(), 'test_get_stack_template')
+
+    def test_get_template_params(self):
+        self.assertEqual(self.main_template.resources['SNSTopicS3'].get_template_params(), {})
+
+    def test_get_aws_region(self):
+        self.assertEqual(self.main_template.resources['SNSTopicS3'].get_aws_region(), 'us-west-1')

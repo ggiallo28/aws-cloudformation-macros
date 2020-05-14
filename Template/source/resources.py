@@ -56,8 +56,10 @@ class Template(AWSObject):
 
         assert type(bucket) == str, ASSERT_MESSAGE.format('Bucket')
         assert type(key) == str, ASSERT_MESSAGE.format('Key')
+        assert self.aws_cfn_request_id, 'Request Id is None.'
 
         file = '/tmp/' + self.aws_cfn_request_id + '/' + key.replace('/', '_')
+        logging.info('Salve file in {}.'.format(file))
 
         with open(file, 'wb') as f:
             s3.download_fileobj(bucket, key, f)
@@ -106,8 +108,11 @@ class Template(AWSObject):
         assert type(path) == str, ASSERT_MESSAGE.format('Path')
         assert type(token) == str, ASSERT_MESSAGE.format('Token')
         assert type(owner) == str, ASSERT_MESSAGE.format('Owner')
+        assert self.aws_cfn_request_id, 'Request Id is None.'
 
         clone_dir = '/tmp/' + self.aws_cfn_request_id + '/github'
+        logging.info('Clone in {}.'.format(clone_dir))
+
         if not os.path.exists(clone_dir + '/' + repo):
             repo_url = 'https://{}github.com/{}/{}.git'.format(
                 token, owner, repo)
@@ -133,6 +138,9 @@ class Template(AWSObject):
             provider = 's3'
 
         template = switcher[provider]()
+        if 'SNSTopicS3' == self.title:
+            print(template, provider)
+
 
         cfn = Simulator(template, {
             **self.template_params,
@@ -142,11 +150,15 @@ class Template(AWSObject):
         return cfn.simulate()
 
     def s3_export(self):
-        bucket_name = self.get_value('TemplateBucket')
-        object_key = self.get_value('TemplateKey',\
-            self.get_value('Path',\
-                self.get_value('Key')))
-        logging.info('Upload {} in {}'.format(object_key, bucket_name))
+        assert self.aws_cfn_request_id, 'Request Id is None.'
+
+        bucket_name = self.get_value('TemplateBucket', DEFAULT_BUCKET)
+        object_key = self.get_value('TemplatePrefix')
+
+        if not object_key:
+            object_key = self.get_value('Path', self.get_value('Key'))
+            object_key = '/'.join(object_key.split("/")[:-1])
+        object_key = '{}/{}-{}.template'.format(object_key, self.title, self.aws_cfn_request_id)
 
         if isinstance(bucket_name, Ref):
             bucket_name = self.template_params[bucket_name.data['Ref']]
@@ -154,13 +166,10 @@ class Template(AWSObject):
         if isinstance(object_key, Ref):
             object_key = self.template_params[object_key.data['Ref']]
 
-        if bucket_name is None:
-            bucket_name = DEFAULT_BUCKET
-            object_key = '{}/{}'.format(self.aws_cfn_request_id, object_key)
+        logging.info('Upload {} in {}'.format(object_key, bucket_name))
 
         import_template = json.dumps(self.get_template())
-        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name,
-                          object_key)
+        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name, object_key)
 
         return Join(
             '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key])
@@ -172,10 +181,21 @@ class Template(AWSObject):
                 setattr(nested_stack, attr, getattr(self, attr))
         for prop in nested_stack.propnames:
             if prop in self.properties:
+                if prop == 'Parameters':
+                    continue
                 setattr(nested_stack, prop, self.properties.get(prop))
         nested_stack.TemplateURL = self.s3_export()
 
         return nested_stack
+
+    def get_aws_cfn_request_id(self):
+        return self.aws_cfn_request_id
+
+    def get_template_params(self):
+        return self.template_params
+
+    def get_aws_region(self):
+        return self.aws_region
 
 class Git(Template):
     resource_type = Template.macro_prefix + 'Git'
@@ -193,7 +213,7 @@ class Git(Template):
         'Tags': ((Tags, list), False),
         'TimeoutInMinutes': (integer, False),
         'TemplateBucket': (basestring, False),
-        'TemplateKey': (basestring, False)
+        'TemplatePrefix': (basestring, False)
     }
 
 

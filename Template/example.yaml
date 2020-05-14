@@ -16,7 +16,10 @@ Parameters:
     Default: macro-template-default-831650818513-us-east-1
   TemplateKey:
     Type: String
-    Default: Template/sns-topics-template.yaml 
+    Default: Template/sns-topics-template.yaml
+  TemplatePrefix:
+    Type: String
+    Default: Template
   Environment:
     Type: String
     Default: prod
@@ -66,7 +69,7 @@ Resources:
           Value: !GetAtt Template::SNSTopiInlineCondition::UrgentPriorityAlarm.TopicName
       TimeoutInMinutes: 1
       TemplateBucket: !Ref BucketName
-      TemplateKey: !Ref TemplateKey
+      TemplatePrefix: !Ref TemplatePrefix
 
   SNSTopicNestedDefault:
     Type: Template::Git
@@ -93,4 +96,4 @@ Resources:
       Key: !Ref TemplateKey
       Parameters:
         Name: 'sns-topic-template-s3-inline-stack'
-        Environment: !Ref Environment#
+        Environment: !Ref Environment
