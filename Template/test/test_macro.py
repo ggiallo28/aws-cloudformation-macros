@@ -71,8 +71,8 @@ class TestUtilsMethods(unittest.TestCase):
         cfn = Simulator(main_template_dict, main_template_dict_params)
         template = cfn.simulate(excude_clean=['Parameters'])
 
-        template = handle_template(template)
-        cls.template = TemplateLoader.loads(template)
+        template = TemplateLoader.loads(template)
+        cls.template = handle_template(template)
 
     def test_parameters(self):
         self.assertEqual(

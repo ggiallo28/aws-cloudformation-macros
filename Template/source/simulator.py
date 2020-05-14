@@ -223,49 +223,6 @@ class Simulator():
 
         return data
 
-#    def _get(self, args):
-#        if type(args) == list:
-#            if self.__prefix in args[0]:
-#                args[0] = args[0].replace(self.__prefix, "")
-#                return {
-#                    "Fn::GetAtt":
-#                    [''.join(args[:-1]).replace(":", ""), args[-1]]
-#                }
-#        if type(args) == str:
-#            return {
-#                "Fn::GetAtt": args.replace(self.__prefix, "").replace(":", "")
-#            }
-#
-#    def _ref(self, args):
-#        if type(args) == list:
-#            if self.__prefix in args[0]:
-#                args[0] = args[0].replace(self.__prefix, "")
-#                return {"Ref": ''.join(args).replace(":", "")}
-#        if type(args) == str:
-#            return {"Ref": args.replace(self.__prefix, "").replace(":", "")}
-#
-#    def evaluate_custom_expression(self, data):
-#
-#        if type(data) == dict and "Fn::GetAtt" in data:
-#            evaluated_params = self.evaluate_custom_expression(
-#                data["Fn::GetAtt"])
-#            return self._get(evaluated_params)
-#
-#        if type(data) == dict and "Ref" in data:
-#            evaluated_params = self.evaluate_custom_expression(data["Ref"])
-#            return self._ref(evaluated_params)
-#
-#        if type(data) == list:
-#            return [self.evaluate_custom_expression(d) for d in data]
-#
-#        if type(data) == dict:
-#            return {
-#                key: self.evaluate_custom_expression(data[key])
-#                for key in data
-#            }
-#
-#        return data
-
     def arrayfy_depends_on(self, data):
         if type(data) == dict:
             return dict(

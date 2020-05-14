@@ -14,8 +14,6 @@ class TemplateLoader(TemplateGenerator):
     TemplateGenerator.add_version = TemplateGenerator.set_version
     TemplateGenerator.add_description = TemplateGenerator.set_description
 
-    Ref.is_ref = lambda x: True
-
     @classmethod
     def loads(cls, json_string):
         return TemplateLoader(cls.__create_key,
@@ -23,11 +21,14 @@ class TemplateLoader(TemplateGenerator):
                               CustomMembers=[S3, Git])
 
     @classmethod
-    def init(cls):
-        return TemplateLoader.loads({
+    def init(cls, parameters):
+        template = TemplateLoader.loads({
             'Description': 'This template is the result of the merge.',
             'Resources': {}
         })
+        template.parameters = parameters
+        template.set_version()
+        return template
 
     def __init__(self, create_key, cf_template=None, **kwargs):
         assert(create_key == TemplateLoader.__create_key), \
@@ -47,8 +48,7 @@ class TemplateLoader(TemplateGenerator):
         setattr(self, key, value)
 
     def __iadd__(self, other):
-        for props in self:
-            key, value = props
+        for key, value in self:
             if key.startswith('_') or key in ['version', 'transform']:
                 continue
 
@@ -225,7 +225,7 @@ class TemplateLoader(TemplateGenerator):
     def is_custom_resource(self, logical_id, import_templates=None):
         # Check if logical_id is in current template
         if not import_templates:
-            return isinstance(self.resources[logical_id], Template)
+            return self.resources[logical_id].is_macro()
         else: # Check if logical_id is in imported resources
             inline_templates = [
                 import_templates[resource][1] 
@@ -235,13 +235,13 @@ class TemplateLoader(TemplateGenerator):
             for inline_template in inline_templates:
                 for title in inline_template.resources:
                     if title == logical_id:
-                        return isinstance(inline_template.resources[title], Template)
+                        return inline_template.resources[title].is_macro()
             return False
 
     ## Used to perform recursive call if there are resource to import
     def contains_custom_resources(self):
         if any([
-                isinstance(res, S3) or isinstance(res, Git)
+                res.is_macro()
                 for res in self.resources.values()
         ]):
             return True

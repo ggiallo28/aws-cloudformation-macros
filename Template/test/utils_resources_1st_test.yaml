@@ -96,7 +96,7 @@ Resources:
           Value: !GetAtt 'Template::SNSTopiInlineCondition::UrgentPriorityAlarm.TopicName'
       TimeoutInMinutes: 1
       TemplateBucket: !Ref 'BucketName'
-      TemplateKey: !Ref 'TemplateKey'
+      TemplatePrefix: !Ref 'TemplateKey'
 Outputs:
   UrgentPriorityAlarmArn:
     Description: Urgent priority SNS topic ARN

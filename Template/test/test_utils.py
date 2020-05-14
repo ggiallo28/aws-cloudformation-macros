@@ -305,9 +305,8 @@ class TestAttrsMethods(unittest.TestCase):
     def test_resolve_attrs_nested_dependson_inline(self):
         # Nested DependsOn Inline
         dependson_resource_id = 'Nested2InlineTarget'
-        merge_template = TemplateLoader.init()
-        merge_template.parameters = self.main_template.parameters
-        merge_template.set_version()
+        merge_template = TemplateLoader.init(self.main_template.parameters)
+
         merge_template.add_resource(self.main_template.resources['Nested2InlineSource'])
 
         merge_template.resolve_attrs(self.import_templates)
@@ -328,9 +327,8 @@ class TestAttrsMethods(unittest.TestCase):
 
     def test_resolve_attrs_nested_dependson_nested(self):
         # Nested DependsOn Nested
-        merge_template = TemplateLoader.init()
-        merge_template.parameters = self.main_template.parameters
-        merge_template.set_version()
+        merge_template = TemplateLoader.init(self.main_template.parameters)
+
         merge_template.add_resource(self.main_template.resources['Nested2NestedTarget'])
         merge_template.add_resource(self.main_template.resources['Nested2NestedSource'])
 
@@ -345,9 +343,7 @@ class TestAttrsMethods(unittest.TestCase):
     def test_resolve_attrs_aws_dependson_inline(self):
         # AWS DependsOn Inline
         dependson_resource_id = 'SNSTopiInlineCondition'
-        merge_template = TemplateLoader.init()
-        merge_template.parameters = self.main_template.parameters
-        merge_template.set_version()
+        merge_template = TemplateLoader.init(self.main_template.parameters)
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarm'])
         merge_template.resolve_attrs(self.import_templates)
@@ -369,9 +365,7 @@ class TestAttrsMethods(unittest.TestCase):
     def test_resolve_attrs_aws_dependson_nested(self):
         # AWS DependsOn Nested
         dependson_resource_id = 'SNSTopicNested'
-        merge_template = TemplateLoader.init()
-        merge_template.parameters = self.main_template.parameters
-        merge_template.set_version()
+        merge_template = TemplateLoader.init(self.main_template.parameters)
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarmDependsOnNested'])
         merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
@@ -386,9 +380,7 @@ class TestAttrsMethods(unittest.TestCase):
     def test_resolve_attrs_nested_dependson_aws(self):
         # Nested DependsOn AWS
         dependson_resource_id = 'HighPriorityAlarm'
-        merge_template = TemplateLoader.init()
-        merge_template.parameters = self.main_template.parameters
-        merge_template.set_version()
+        merge_template = TemplateLoader.init(self.main_template.parameters)
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarm'])
         merge_template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
@@ -401,7 +393,7 @@ class TestAttrsMethods(unittest.TestCase):
         )
 
     def test_is_custom(self):
-        template = TemplateLoader.init()      
+        template = TemplateLoader.init({})      
         template.add_resource(self.main_template.resources['HighPriorityAlarm'])
         self.assertFalse(template.contains_custom_resources())
         template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])

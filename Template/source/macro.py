@@ -15,57 +15,51 @@ from simulator import *
 
 logging.basicConfig(level=logging.INFO)
 
-
-logging.info = print
-
 def handle_template(main_template):
-    main_template = TemplateLoader.loads(main_template)
-
-    merge_template = TemplateLoader.init()
-    merge_template.parameters = main_template.parameters
-    merge_template.set_version()
+    merge_template = TemplateLoader.init(main_template.parameters)
 
     import_templates = {}
 
     for resource_id, resource_obj in main_template.resources.items():
-        if not isinstance(resource_obj, Template):
+        if not resource_obj.is_macro():
             merge_template.add_resource(resource_obj)
+
             logging.info('Add AWS Resource {}'.format(resource_id))
+
         else:
             mode = resource_obj.properties.get('Mode', 'Inline')
 
             if mode.lower() == 'nested':
-                stack_template = resource_obj.get_stack_template()
-                merge_template.add_resource(stack_template)
+                merge_template.add_resource(
+                    resource_obj.get_stack_template()
+                )
 
                 logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
             if mode.lower() == 'inline':
-                import_template = resource_obj.get_template()
-                import_template = TemplateLoader.loads(import_template)
+                import_template = TemplateLoader.loads(
+                    resource_obj.get_template()
+                )
+
                 import_template = import_template.translate(prefix=resource_id)
 
-                import_templates = {
-                    **import_templates,
-                    **{
+                import_templates.update({
                         resource_id: (resource_obj, import_template)
-                    }
-                }
+                })
 
                 logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
     merge_template.resolve_attrs(import_templates)
 
-    for key in import_templates:
-        top_level_resource, inline_template = import_templates[key]
+    for _,(top_level_resource, inline_template) in import_templates.items():
         inline_template.set_attrs(top_level_resource, import_templates)
         merge_template += inline_template
 
     if merge_template.contains_custom_resources():
         logging.info('Recursive Call.')
-        return handle_template(json.loads(merge_template.to_json()))
+        return handle_template(merge_template)
 
-    return json.loads(merge_template.to_json())
+    return merge_template
 
 
 def create_local_path(requestId):
@@ -86,23 +80,22 @@ def handler(event, context):
     request_id = create_local_path(event['requestId'])
     parameters = event['templateParameterValues']
 
-    cfn = Simulator(event['fragment'], event['templateParameterValues'])
+    cfn = Simulator(event['fragment'], parameters)
     template = cfn.simulate(excude_clean=['Parameters'])
-    aws_region = event['region']
+    template = TemplateLoader.loads(template)
 
     macro_response = {
-        'fragment': template,
         'status': 'success',
         'requestId': request_id
     }
 
     Template.aws_cfn_request_id = request_id
     Template.template_params = parameters
-    Template.aws_region = aws_region
+    Template.aws_region = event['region']
 
     try:
-        macro_response['fragment'] = handle_template(template)
-        macro_response['fragment'] = TemplateLoader.loads(macro_response['fragment']).evaluate_custom_expression()
+        template = handle_template(template)
+        macro_response['fragment'] = template.evaluate_custom_expression()
 
         logging.debug("Output:", json.dumps(event))
     except Exception as e:

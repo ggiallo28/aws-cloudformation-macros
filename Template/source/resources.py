@@ -27,11 +27,15 @@ try:
 except NameError:
     basestring = str
 
+AWSObject.is_macro = lambda x: False
+Ref.extract = lambda x: x.data['Ref']
 
 class Template(AWSObject): 
     global aws_cfn_request_id
     global template_params
     global aws_region
+
+    is_macro = lambda x: True
 
     macro_name = 'Template'
     macro_separator = '::'
@@ -48,28 +52,82 @@ class Template(AWSObject):
             value = self.template_params[value['Ref']]
         return default if value in [None, ""] else value
 
-    def s3_import(self):
-        logging.info('Import {} from S3.'.format(self.title))
+    def get_template(self):
+        template = self.download()
 
-        bucket = self.get_value('Bucket')
-        key = self.get_value('Key')
+        cfn = Simulator(template, {
+            **self.template_params,
+            **self.get_value('Parameters', default={})
+        })
 
-        assert type(bucket) == str, ASSERT_MESSAGE.format('Bucket')
-        assert type(key) == str, ASSERT_MESSAGE.format('Key')
+        return cfn.simulate()
+
+    def s3_export(self):
         assert self.aws_cfn_request_id, 'Request Id is None.'
 
-        file = '/tmp/' + self.aws_cfn_request_id + '/' + key.replace('/', '_')
-        logging.info('Salve file in {}.'.format(file))
+        bucket_name = self.get_value('TemplateBucket', DEFAULT_BUCKET)
+        object_key = self.get_value('TemplatePrefix')
 
-        with open(file, 'wb') as f:
-            s3.download_fileobj(bucket, key, f)
+        if not object_key:
+            object_key = self.get_value('Path', self.get_value('Key'))
+            object_key = '/'.join(object_key.split("/")[:-1])
 
-        with open(file) as f:
-            template = json.loads(to_json(f.read()))
+        object_key = '{}/{}-{}.template'.format(
+            object_key, self.title, 
+            self.aws_cfn_request_id
+        )
 
-        return template
+        logging.info('Upload {} in {}'.format(object_key, bucket_name))
 
-    def codecommit_import(self):
+        import_template = json.dumps(self.get_template())
+        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name, object_key)
+
+        return Join(
+            '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key])
+
+    def get_stack_template(self):
+        nested_stack = cloudformation.Stack(title=self.title)
+        for attr in nested_stack.attributes:
+            if hasattr(self, attr):
+                setattr(nested_stack, attr, getattr(self, attr))
+        for prop in nested_stack.propnames:
+            if prop in self.properties:
+                if prop == 'Parameters': # Parameters are already resolved by Simulator
+                    continue
+                setattr(nested_stack, prop, self.properties.get(prop))
+        nested_stack.TemplateURL = self.s3_export()
+
+        return nested_stack
+
+    def get_aws_cfn_request_id(self):
+        return self.aws_cfn_request_id
+
+    def get_template_params(self):
+        return self.template_params
+
+    def get_aws_region(self):
+        return self.aws_region
+
+class Git(Template):
+    resource_type = Template.macro_prefix + 'Git'
+
+    props = {
+        'Mode': (basestring, True),
+        'Provider': (basestring, True),
+        'Repo': (basestring, True),
+        'Path': (basestring, True),
+        'Branch': (basestring, False),
+        'Owner': (basestring, False),
+        'OAuthToken': (basestring, False),
+        'Parameters': (dict, False),
+        'NotificationARNs': ([basestring], False),
+        'Tags': ((Tags, list), False),
+        'TimeoutInMinutes': (integer, False),
+        'TemplateBucket': (basestring, False),
+        'TemplatePrefix': (basestring, False)
+    }
+
+    def _codecommit_import(self):
         logging.info('Import {} from Codecommit.'.format(self.title))
 
         repo = self.get_value('Repo')
@@ -88,7 +146,7 @@ class Template(AWSObject):
 
         return template
 
-    def github_import(self):
+    def _github_import(self):
         logging.info('Import {} from Github.'.format(self.title))
 
         repo = self.get_value('Repo')
@@ -124,98 +182,14 @@ class Template(AWSObject):
 
         return template
 
-    def get_template(self):
-        switcher = {
-            's3': self.s3_import,
-            'codecommit': self.codecommit_import,
-            'github': self.github_import
-        }
+    def download():
+        provider = self.properties.get_value('Provider')
 
-        if isinstance(self, Git):
-            provider = self.properties["Provider"].lower()
+        if provider.lower() == 'github':
+            return self._github_import()
 
-        if isinstance(self, S3):
-            provider = 's3'
-
-        template = switcher[provider]()
-        if 'SNSTopicS3' == self.title:
-            print(template, provider)
-
-
-        cfn = Simulator(template, {
-            **self.template_params,
-            **self.get_value('Parameters', default={})
-        })
-
-        return cfn.simulate()
-
-    def s3_export(self):
-        assert self.aws_cfn_request_id, 'Request Id is None.'
-
-        bucket_name = self.get_value('TemplateBucket', DEFAULT_BUCKET)
-        object_key = self.get_value('TemplatePrefix')
-
-        if not object_key:
-            object_key = self.get_value('Path', self.get_value('Key'))
-            object_key = '/'.join(object_key.split("/")[:-1])
-        object_key = '{}/{}-{}.template'.format(object_key, self.title, self.aws_cfn_request_id)
-
-        if isinstance(bucket_name, Ref):
-            bucket_name = self.template_params[bucket_name.data['Ref']]
-
-        if isinstance(object_key, Ref):
-            object_key = self.template_params[object_key.data['Ref']]
-
-        logging.info('Upload {} in {}'.format(object_key, bucket_name))
-
-        import_template = json.dumps(self.get_template())
-        s3.upload_fileobj(io.BytesIO(import_template.encode()), bucket_name, object_key)
-
-        return Join(
-            '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key])
-
-    def get_stack_template(self):
-        nested_stack = cloudformation.Stack(title=self.title)
-        for attr in nested_stack.attributes:
-            if hasattr(self, attr):
-                setattr(nested_stack, attr, getattr(self, attr))
-        for prop in nested_stack.propnames:
-            if prop in self.properties:
-                if prop == 'Parameters':
-                    continue
-                setattr(nested_stack, prop, self.properties.get(prop))
-        nested_stack.TemplateURL = self.s3_export()
-
-        return nested_stack
-
-    def get_aws_cfn_request_id(self):
-        return self.aws_cfn_request_id
-
-    def get_template_params(self):
-        return self.template_params
-
-    def get_aws_region(self):
-        return self.aws_region
-
-class Git(Template):
-    resource_type = Template.macro_prefix + 'Git'
-
-    props = {
-        'Mode': (basestring, True),
-        'Provider': (basestring, True),
-        'Repo': (basestring, True),
-        'Path': (basestring, True),
-        'Branch': (basestring, False),
-        'Owner': (basestring, False),
-        'OAuthToken': (basestring, False),
-        'Parameters': (dict, False),
-        'NotificationARNs': ([basestring], False),
-        'Tags': ((Tags, list), False),
-        'TimeoutInMinutes': (integer, False),
-        'TemplateBucket': (basestring, False),
-        'TemplatePrefix': (basestring, False)
-    }
-
+        if provider.lower() == 'codecommit':
+            return self._codecommit_import()
 
 class S3(Template):
     resource_type = Template.macro_prefix + 'S3'
@@ -230,5 +204,26 @@ class S3(Template):
         'TimeoutInMinutes': (integer, False),
         'TemplateBucket': (basestring, False)
     }
+
+    def download(self):
+        logging.info('Import {} from S3.'.format(self.title))
+
+        bucket = self.get_value('Bucket')
+        key = self.get_value('Key')
+
+        assert type(bucket) == str, ASSERT_MESSAGE.format('Bucket')
+        assert type(key) == str, ASSERT_MESSAGE.format('Key')
+        assert self.aws_cfn_request_id, 'Request Id is None.'
+
+        file = '/tmp/' + self.aws_cfn_request_id + '/' + key.replace('/', '_')
+        logging.info('Salve file in {}.'.format(file))
+
+        with open(file, 'wb') as f:
+            s3.download_fileobj(bucket, key, f)
+
+        with open(file) as f:
+            template = json.loads(to_json(f.read()))
+
+        return template
 
 
