@@ -30,8 +30,6 @@ class Simulator():
 
         self.template = self.evaluate_expression(self.template)
 
-#        self.template = self.evaluate_custom_expression(self.template)
-
         self.template = self.handle_conditions(self.template)
 
         self.template = self.arrayfy_depends_on(self.template)

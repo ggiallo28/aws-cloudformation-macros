@@ -18,7 +18,7 @@ cm = boto3.client('codecommit')
 
 BRANCH_DEFAULT = 'master'
 TEMPLATE_NAME_DEFAULT = 'template.yaml'
-ASSERT_MESSAGE = 'Template format error: {} value is invalid. The value must not depend on any resources or imported values'
+ASSERT_MESSAGE = 'Template format error: {} value in {} is invalid. The value must not depend on any resources or imported values. Check if Parameter exists.'
 DEFAULT_BUCKET = os.environ.get(
     'DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
 
@@ -62,7 +62,7 @@ class Template(AWSObject):
 
         return cfn.simulate()
 
-    def s3_export(self):
+    def _s3_export(self):
         assert self.aws_cfn_request_id, 'Request Id is None.'
 
         bucket_name = self.get_value('TemplateBucket', DEFAULT_BUCKET)
@@ -94,8 +94,8 @@ class Template(AWSObject):
             if prop in self.properties:
                 if prop == 'Parameters': # Parameters are already resolved by Simulator
                     continue
-                setattr(nested_stack, prop, self.properties.get(prop))
-        nested_stack.TemplateURL = self.s3_export()
+                setattr(nested_stack, prop, self.get_value(prop))
+        nested_stack.TemplateURL = self._s3_export()
 
         return nested_stack
 
@@ -134,9 +134,9 @@ class Git(Template):
         branch = self.get_value('Branch', default=BRANCH_DEFAULT)
         path = self.get_value('Path', default=TEMPLATE_NAME_DEFAULT)
 
-        assert type(repo) == str, ASSERT_MESSAGE.format('Repo')
-        assert type(branch) == str, ASSERT_MESSAGE.format('Branch')
-        assert type(path) == str, ASSERT_MESSAGE.format('Path')
+        assert type(repo) == str, ASSERT_MESSAGE.format('Repo', self.title)
+        assert type(branch) == str, ASSERT_MESSAGE.format('Branch', self.title)
+        assert type(path) == str, ASSERT_MESSAGE.format('Path', self.title)
 
         response = cm.get_file(repositoryName=repo,
                                commitSpecifier=branch,
@@ -161,11 +161,11 @@ class Git(Template):
             raise Exception(
                 'Owner property must be provied when provider is GitHub.')
 
-        assert type(repo) == str, ASSERT_MESSAGE.format('Repo')
-        assert type(branch) == str, ASSERT_MESSAGE.format('Branch')
-        assert type(path) == str, ASSERT_MESSAGE.format('Path')
-        assert type(token) == str, ASSERT_MESSAGE.format('Token')
-        assert type(owner) == str, ASSERT_MESSAGE.format('Owner')
+        assert type(repo) == str, ASSERT_MESSAGE.format('Repo', self.title)
+        assert type(branch) == str, ASSERT_MESSAGE.format('Branch', self.title)
+        assert type(path) == str, ASSERT_MESSAGE.format('Path', self.title)
+        assert type(token) == str, ASSERT_MESSAGE.format('Token', self.title)
+        assert type(owner) == str, ASSERT_MESSAGE.format('Owner', self.title)
         assert self.aws_cfn_request_id, 'Request Id is None.'
 
         clone_dir = '/tmp/' + self.aws_cfn_request_id + '/github'
@@ -182,8 +182,8 @@ class Git(Template):
 
         return template
 
-    def download():
-        provider = self.properties.get_value('Provider')
+    def download(self):
+        provider = self.get_value('Provider')
 
         if provider.lower() == 'github':
             return self._github_import()
@@ -205,18 +205,18 @@ class S3(Template):
         'TemplateBucket': (basestring, False)
     }
 
-    def download(self):
+    def _s3_import(self):
         logging.info('Import {} from S3.'.format(self.title))
 
         bucket = self.get_value('Bucket')
         key = self.get_value('Key')
 
-        assert type(bucket) == str, ASSERT_MESSAGE.format('Bucket')
-        assert type(key) == str, ASSERT_MESSAGE.format('Key')
+        assert type(bucket) == str, ASSERT_MESSAGE.format('Bucket', self.title)
+        assert type(key) == str, ASSERT_MESSAGE.format('Key', self.title)
         assert self.aws_cfn_request_id, 'Request Id is None.'
 
         file = '/tmp/' + self.aws_cfn_request_id + '/' + key.replace('/', '_')
-        logging.info('Salve file in {}.'.format(file))
+        logging.info('Save file in {}, from s3://{}/{}.'.format(file, bucket, key))
 
         with open(file, 'wb') as f:
             s3.download_fileobj(bucket, key, f)
@@ -225,5 +225,8 @@ class S3(Template):
             template = json.loads(to_json(f.read()))
 
         return template
+
+    def download(self):
+        return self._s3_import()
 
 

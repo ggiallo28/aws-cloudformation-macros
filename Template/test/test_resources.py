@@ -49,8 +49,10 @@ class TestUtilsMethods(unittest.TestCase):
                                     import_template_dict_params)
         import_template = import_template.simulate()
 
-        Template.get_template = MagicMock(return_value=import_template)
-        Template.s3_export = MagicMock(return_value=Join(
+        Template._codecommit_import = MagicMock(return_value=import_template)
+        Template._github_import = MagicMock(return_value=import_template)
+        Template._s3_import = MagicMock(return_value=import_template)
+        Template._s3_export = MagicMock(return_value=Join(
             '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key]))
 
         main_template = Simulator(main_template_dict,
@@ -73,3 +75,18 @@ class TestUtilsMethods(unittest.TestCase):
 
     def test_get_aws_region(self):
         self.assertEqual(self.main_template.resources['SNSTopicS3'].get_aws_region(), 'us-west-1')
+
+    def test_s3(self):
+        resource_obj = self.main_template.resources['SNSTopicNested']
+        try:
+            json.dumps(resource_obj.get_template())
+        except:
+            self.assertTrue(False)
+
+    def test_git(self):
+        resource_obj = self.main_template.resources['SNSTopiInlineCondition']
+        try:
+            json.dumps(resource_obj.get_template())
+        except:
+            self.assertTrue(False)
+
