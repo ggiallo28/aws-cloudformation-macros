@@ -51,6 +51,9 @@ This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
 
 This Macro uses two Custom Resources.
 
+- Template::Git
+- Template::S3
+
 ## Template::Git
 
 The Template::Git imports Cloudformation Template from Git Repository.
@@ -115,11 +118,17 @@ If `Inline` mode is used you can reference resource in imported Template using t
 
 For example, you can obtain the Arn of a resource inside imported template using:
 
-- Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]
+```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
 
 you can reference resource inside imported template using:
 
-- Ref: Template::TemplateName::LogicalName
+```Ref: Template::TemplateName::LogicalName```
+
+Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
+
+You can define dependency to Template resource using Template:: prefix.
+
+```DependsOn: Template::TemplateName```
 
 _Required_: Yes
 
@@ -127,12 +136,6 @@ _Type_: String
 
 _Allowed Values_:  `Inline | Nested`
 
-
-Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
-
-You can define dependency to Template resource using Template:: prefix.
-
-- DependsOn: Template::TemplateName
 
 `Provider`
 
@@ -315,11 +318,17 @@ If `Inline` mode is used you can reference resource in imported Template using t
 
 For example, you can obtain the Arn of a resource inside imported template using:
 
-- Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]
+```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
 
 you can reference resource inside imported template using:
 
-- Ref: Template::TemplateName::LogicalName
+```Ref: Template::TemplateName::LogicalName```
+
+Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
+
+You can define dependency to Template resource using Template:: prefix. 
+
+```DependsOn: Template::TemplateName```
 
 _Required_: Yes
 
@@ -327,12 +336,6 @@ _Type_: String
 
 _Allowed Values_:  `Inline | Nested`
 
-
-Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
-
-You can define dependency to Template resource using Template:: prefix. 
-
-- DependsOn: Template::TemplateName
 
 `Bucket`
 
