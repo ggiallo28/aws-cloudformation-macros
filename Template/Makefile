@@ -16,7 +16,7 @@ example:
 	aws cloudformation deploy --template-file ./example.output --stack-name TemplateExamplev1 --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND || echo "Continue"
 	rm -f ./example.output
 
-example-boto3:
-	aws cloudformation package --template-file example-boto3.yaml --s3-bucket $(BUCKET) --output-template-file example-boto3.output  || echo "Continue"
-	#aws cloudformation deploy --template-file ./example-boto3.output --stack-name TemplateExampleBoto3 --region $(REGION) || echo "Continue"
-	#rm -f ./example-boto3.output
+example-lambda:
+	aws cloudformation package --template-file example-lambda.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
+	aws cloudformation deploy --template-file ./example.output --stack-name TemplateLambda --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND || echo "Continue"
+	rm -f ./example.output

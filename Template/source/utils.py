@@ -252,35 +252,36 @@ class TemplateLoader(TemplateGenerator):
         if type(args) == list:
             if Template.macro_prefix in args[0]:
                 args[0] = args[0].replace(Template.macro_prefix, "")
-                return {
-                    "Fn::GetAtt":
-                    [''.join(args[:-1]).replace(":", ""), args[-1]]
-                }
+                return [''.join(args[:-1]).replace(":", ""), args[-1]]
+
         if type(args) == str:
-            return {
-                "Fn::GetAtt": args.replace(Template.macro_prefix, "").replace(":", "")
-            }
+            return args.replace(Template.macro_prefix, "").replace(":", "")
+
+        return args
 
     def _ref(self, args):
         if type(args) == list:
             if Template.macro_prefix in args[0]:
                 args[0] = args[0].replace(Template.macro_prefix, "")
-                return {"Ref": ''.join(args).replace(":", "")}
+                return ''.join(args).replace(":", "")
         if type(args) == str:
-            return {"Ref": args.replace(Template.macro_prefix, "").replace(":", "")}
+            return args.replace(Template.macro_prefix, "").replace(":", "")
+
+        return args
 
     def evaluate_custom_expression(self):
         return self._evaluate_custom_expression(self.to_dict())
 
     def _evaluate_custom_expression(self, data):
         if type(data) == dict and "Fn::GetAtt" in data:
-            evaluated_params = self._evaluate_custom_expression(
-                data["Fn::GetAtt"])
-            return self._get(evaluated_params)
+            evaluated_params = self._evaluate_custom_expression(data["Fn::GetAtt"])
+            data["Fn::GetAtt"] = self._get(evaluated_params)
+            return data
 
         if type(data) == dict and "Ref" in data:
             evaluated_params = self._evaluate_custom_expression(data["Ref"])
-            return self._ref(evaluated_params)
+            data["Ref"] = self._ref(evaluated_params)
+            return data
 
         if type(data) == list:
             return [self._evaluate_custom_expression(d) for d in data]

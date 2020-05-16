@@ -61,8 +61,8 @@ Resources:
           - c
       SubTest: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${NameIndex}'
       SubTestArray: !Sub
-        - www.${NameIndex}
-        - !Sub '${EnvType}'
+        - www.${NameIndex}${EnvType}
+        - EnvType: !Ref EnvType
       SplitTest: !Split
         - ':'
         - a:b:c

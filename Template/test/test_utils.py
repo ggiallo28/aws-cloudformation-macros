@@ -5,6 +5,9 @@ sys.path.insert(1, 'source')
 import json
 import unittest
 from cfn_flip import to_json
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from simulator import *
 from utils import *
@@ -81,22 +84,22 @@ class TestUtilsMethods(unittest.TestCase):
 
         self.assertEqual(
             tdata['Outputs'][self._prefix + 'UrgentPriorityAlarmArn']['Export']['Name']['Fn::Join'], 
-            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-urgent-prod'}]]
+            ['-', [self._prefix, {'Fn::Join': ["",[{"Ref": "AWS::StackName"},'-urgent-prod']]}]]
         )
 
         self.assertEqual(
             tdata['Outputs'][self._prefix + 'HighPriorityAlarmArn']['Export']['Name']['Fn::Join'],
-            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-high-prod'}]]
+            ['-', [self._prefix, {'Fn::Join': ["",[{"Ref": "AWS::StackName"},'-high-prod']]}]]
         )
 
         self.assertEqual(
             tdata['Outputs'][self._prefix + 'MediumPriorityAlarmArn']['Export']['Name']['Fn::Join'],
-            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-medium-prod'}]]
+            ['-', [self._prefix, {'Fn::Join': ["",[{"Ref": "AWS::StackName"},'-medium-prod']]}]]
         )
 
         self.assertEqual(
             tdata['Outputs'][self._prefix + 'LowPriorityAlarmArn']['Export']['Name']['Fn::Join'],
-            ['-', [self._prefix, {'Fn::Sub': '${AWS::StackName}-low-prod'}]]
+            ['-', [self._prefix, {'Fn::Join': ["",[{"Ref": "AWS::StackName"},'-low-prod']]}]]
         )
 
         self.assertTrue(self._prefix + 'UrgentPriorityAlarm' in tdata['Resources'])
@@ -398,6 +401,105 @@ class TestAttrsMethods(unittest.TestCase):
         self.assertFalse(template.contains_custom_resources())
         template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
         self.assertTrue(template.contains_custom_resources())
+
+
+    def test_evaluate_custom_expression(self):
+        snippet = {
+            "test1": {
+                "Fn::GetAtt": [
+                    "LambdaShutdownInstanceStartEC2Instances",
+                    "Arn"
+                ]
+            },
+            "test2": {
+                "Fn::GetAtt": [
+                    "LambdaShutdownInstanceLambdaExecutionRole",
+                    "Arn"
+                ]
+            },
+            "test3": {
+                "Fn::GetAtt": [
+                    "LambdaShutdownInstanceStartEC2InstancesEventRule",
+                    "Arn"
+                ]
+            },
+            "test4":{
+                "Fn::GetAtt": [
+                    "LambdaRebootInstanceLambdaFunction",
+                    "Arn"
+                ]
+            },
+            "test5": {
+                "Ref": "Template::SNSTopiInlineCondition::UrgentPriorityAlarm"
+            },
+            "test6": {
+                "Fn::GetAtt": [
+                    "Template::SNSTopiInlineCondition::UrgentPriorityAlarm",
+                    "TopicName"
+                ]
+            },
+            "test7": {
+                "Fn::Join": ["-", [
+                    {
+                        "Fn::GetAtt": [
+                            "LambdaShutdownInstanceStartEC2Instances",
+                            "Arn"
+                        ]
+                    },{
+                        "Ref": "Template::SNSTopiInlineCondition::UrgentPriorityAlarm"
+                    },
+                    {
+                        "Fn::GetAtt": [{
+                                "Fn::Join": ["+", [{
+                                    "Fn::GetAtt": [
+                                        "Template::SNSTopiInlineCondition::UrgentPriorityAlarm",
+                                        "TopicName"
+                                    ]
+                                }, {
+                                    "Ref": "Template::SNSTopiInlineCondition::UrgentPriorityAlarm"
+                                }]]
+                            },
+                            "TopicName"
+                        ]
+                    }
+                ]]
+            }
+        }
+        template = TemplateLoader.init({})
+        template = template._evaluate_custom_expression(snippet)
+
+        self.assertEqual(template["test1"], snippet["test1"])
+        self.assertEqual(template["test2"], snippet["test2"])
+        self.assertEqual(template["test3"], snippet["test3"])
+        self.assertEqual(template["test4"], snippet["test4"])
+        self.assertEqual(template["test5"], {"Ref": "SNSTopiInlineConditionUrgentPriorityAlarm"})
+        self.assertEqual(template["test6"], {"Fn::GetAtt": ["SNSTopiInlineConditionUrgentPriorityAlarm","TopicName"]})
+        self.assertEqual(template["test7"], {
+            "Fn::Join": ["-", [
+                {
+                    "Fn::GetAtt": [
+                        "LambdaShutdownInstanceStartEC2Instances",
+                        "Arn"
+                    ]
+                },{
+                    "Ref": "SNSTopiInlineConditionUrgentPriorityAlarm"
+                },
+                {
+                    "Fn::GetAtt": [{
+                            "Fn::Join": ["+", [{
+                                "Fn::GetAtt": [
+                                    "SNSTopiInlineConditionUrgentPriorityAlarm",
+                                    "TopicName"
+                                ]
+                            }, {
+                                "Ref": "SNSTopiInlineConditionUrgentPriorityAlarm"
+                            }]]
+                        },
+                        "TopicName"
+                    ]
+                }
+            ]]
+        })
 
 if __name__ == '__main__':
     unittest.main()

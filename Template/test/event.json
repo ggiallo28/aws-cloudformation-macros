@@ -10,25 +10,25 @@
             "Type": "String",
             "Default": "ggiallo28"
         },
-        "RepositoryName": {
+        "ProjectName": {
             "Type": "String",
-            "Default": "aws-cloudformation-macros"
+            "Default": "xp-coast/xpeppers/xpeppers-cloudformation-sample"
         },
         "BranchName": {
             "Type": "String",
             "Default": "master"
         },
-        "BucketName": {
+        "TemplateLambdaRebootInstance": {
             "Type": "String",
-            "Default": "macro-template-default-831650818513-us-east-1"
+            "Default": "lambda/lambda-reboot-instance.yml"
         },
-        "TemplateKey": {
+        "TemplateLambdaShutdownInstance": {
             "Type": "String",
-            "Default": "Template/sns-topics-template.yaml"
+            "Default": "lambda/lambda-shutdown-instance.yml"
         },
-        "TemplatePrefix": {
+        "OAuthToken": {
             "Type": "String",
-            "Default": "Template"
+            "Default": "fqJxMgWrxY_mZGReVhV2"
         },
         "Environment": {
             "Type": "String",
@@ -54,131 +54,47 @@
                 }
             }
         },
-        "SNSTopiInlineCondition": {
+        "LambdaRebootInstance": {
             "Type": "Template::Git",
             "Properties": {
                 "Mode": "Inline",
-                "Provider": "Github",
-                "Repo": {
-                    "Ref": "RepositoryName"
+                "Provider": "Gitlab",
+                "Project": {
+                    "Ref": "ProjectName"
                 },
                 "Branch": {
                     "Ref": "BranchName"
                 },
                 "Path": {
-                    "Ref": "TemplateKey"
+                    "Ref": "TemplateLambdaRebootInstance"
                 },
-                "Owner": {
-                    "Ref": "GitHubUser"
-                },
-                "Parameters": {
-                    "Name": "sns-topic-template-codecommit-inline-stack-condition",
-                    "Environment": {
-                        "Ref": "Environment"
-                    }
+                "OAuthToken": {
+                    "Ref": "OAuthToken"
                 }
             }
         },
-        "SNSTopicNested": {
+        "LambdaShutdownInstance": {
             "Type": "Template::Git",
             "Properties": {
-                "Mode": "Nested",
-                "Provider": "Github",
-                "Repo": {
-                    "Ref": "RepositoryName"
+                "Mode": "Inline",
+                "Provider": "Gitlab",
+                "Project": {
+                    "Ref": "ProjectName"
                 },
                 "Branch": {
                     "Ref": "BranchName"
                 },
                 "Path": {
-                    "Ref": "TemplateKey"
+                    "Ref": "TemplateLambdaShutdownInstance"
                 },
-                "Owner": {
-                    "Ref": "GitHubUser"
+                "OAuthToken": {
+                    "Ref": "OAuthToken"
                 },
                 "Parameters": {
-                    "Name": "sns-topic-template-github-nested-stack",
-                    "Environment": {
-                        "Ref": "Environment"
-                    }
-                },
-                "NotificationARNs": [
-                    {
-                        "Ref": "Template::SNSTopiInlineCondition::UrgentPriorityAlarm"
-                    },
-                    {
+                    "StopScheduleRule": "cron(0 20 ? * MON-FRI *)",
+                    "StartScheduleRule": "cron(0 7 ? * MON-FRI *)",
+                    "AlarmSNSTopic": {
                         "Ref": "HighPriorityAlarm"
-                    }
-                ],
-                "Tags": [
-                    {
-                        "Key": "Environment",
-                        "Value": {
-                            "Ref": "Environment"
-                        }
-                    },
-                    {
-                        "Key": "TopicName",
-                        "Value": {
-                            "Fn::GetAtt": [
-                                "Template::SNSTopiInlineCondition::UrgentPriorityAlarm",
-                                "TopicName"
-                            ]
-                        }
-                    }
-                ],
-                "TimeoutInMinutes": 1,
-                "TemplateBucket": {
-                    "Ref": "BucketName"
-                },
-                "TemplatePrefix": {
-                    "Ref": "TemplatePrefix"
-                }
-            }
-        },
-        "SNSTopicNestedDefault": {
-            "Type": "Template::Git",
-            "Condition": "CreateResources",
-            "DependsOn": "Template::SNSTopicNested",
-            "Properties": {
-                "Mode": "Nested",
-                "Provider": "Github",
-                "Repo": {
-                    "Ref": "RepositoryName"
-                },
-                "Branch": {
-                    "Ref": "BranchName"
-                },
-                "Path": {
-                    "Ref": "TemplateKey"
-                },
-                "Owner": {
-                    "Ref": "GitHubUser"
-                },
-                "Parameters": {
-                    "Name": "sns-topic-template-github-nested-stack-default-bucket",
-                    "Environment": {
-                        "Ref": "Environment"
-                    }
-                }
-            }
-        },
-        "SNSTopicS3": {
-            "Type": "Template::S3",
-            "Condition": "CreateResources",
-            "DependsOn": "Template::SNSTopiInlineCondition",
-            "Properties": {
-                "Mode": "Inline",
-                "Bucket": {
-                    "Ref": "BucketName"
-                },
-                "Key": {
-                    "Ref": "TemplateKey"
-                },
-                "Parameters": {
-                    "Name": "sns-topic-template-s3-inline-stack",
-                    "Environment": {
-                        "Ref": "Environment"
                     }
                 }
             }
@@ -189,12 +105,5 @@
   "requestId": "613c529e-c148-48ba-877c-9e6a867f68a6",
   "region": "us-east-1",
   "params": {},
-  "templateParameterValues": {
-    "GitHubUser": "ggiallo28",
-    "BucketName": "macro-template-default-831650818513-us-east-1",
-    "TemplateKey": "Template/sns-topics-template.yaml",
-    "Environment": "prod",
-    "RepositoryName": "aws-cloudformation-macros",
-    "BranchName": "master"
-  }
+  "templateParameterValues": {}
 }

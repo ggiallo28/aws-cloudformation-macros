@@ -28,6 +28,8 @@ class Simulator():
 
         self.template = self.expand_parameters(self.template)
 
+        self.template = self.sub_to_join(self.template)
+
         self.template = self.evaluate_expression(self.template)
 
         self.template = self.handle_conditions(self.template)
@@ -36,7 +38,41 @@ class Simulator():
 
         self.template = self.cleanup(self.template, excude_clean)
 
+
         return self.template
+
+    def sub_to_join(self, data):
+        if type(data) == dict:
+            if 'Fn::Sub' in data:
+                sub_values = data['Fn::Sub']
+
+                if type(sub_values) == str:
+                    sub_string, sub_map = sub_values, {}
+                if type(sub_values) == list:
+                    sub_string, sub_map = sub_values
+
+                join_values = re.split('('+self.__params_regexp+')', sub_string)
+                for index, element in enumerate(join_values):
+                    if re.findall(self.__params_regexp, element):
+                        reference_key = element[2:-1]
+                        join_values[index] = sub_map.get(reference_key, 
+                            {"Ref": reference_key})
+
+                del data['Fn::Sub']
+
+                data['Fn::Join'] = [ "" , self.sub_to_join([i for i in join_values if i]) ]
+
+                return data
+            else:
+                return dict(filter(lambda x: not x is None, map(self.sub_to_join, data.items())))
+
+        if type(data) == list:
+            return list(filter(lambda x: not x is None, map(self.sub_to_join, data)))
+
+        if type(data) == tuple:
+            return (data[0], self.sub_to_join(data[1]))
+
+        return data
 
     def expand_parameters(self, data):
 
@@ -103,9 +139,8 @@ class Simulator():
         try:
             return delimiter.join(words)
         except Exception as e:
-            logging.error('Fault assumption: _join {}'.format(e))
-            logging.warning('Fault assumption: _join("{}", {}).'.format(
-                delimiter, words))
+            #logging.error('Fault assumption: _join {}'.format(e))
+            #logging.warning('Fault assumption: _join("{}", {}).'.format(delimiter, words))
             return {"Fn::Join": [delimiter, words]}
 
     def _if(self, condition_name, value_if_true, value_if_false):
@@ -224,9 +259,9 @@ class Simulator():
     def arrayfy_depends_on(self, data):
         if type(data) == dict:
             return dict(
-                filter(None, map(self.arrayfy_depends_on, data.items())))
+                filter(lambda x: not x is None, map(self.arrayfy_depends_on, data.items())))
         if type(data) == list:
-            return list(filter(None, map(self.arrayfy_depends_on, data)))
+            return list(filter(lambda x: not x is None, map(self.arrayfy_depends_on, data)))
         if type(data) == tuple:
             key, value = data
             if key == 'DependsOn':
@@ -240,10 +275,10 @@ class Simulator():
 
     def handle_conditions(self, data):
         if type(data) == dict:
-            return dict(filter(None, map(self.handle_conditions,
+            return dict(filter(lambda x: not x is None, map(self.handle_conditions,
                                          data.items())))
         if type(data) == list:
-            return list(filter(None, map(self.handle_conditions, data)))
+            return list(filter(lambda x: not x is None, map(self.handle_conditions, data)))
         if type(data) == tuple:
             key, value = data
             if type(value) == dict:

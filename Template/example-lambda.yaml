@@ -1,0 +1,60 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  GitHubUser:
+    Type: String
+    Default: ggiallo28
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateLambdaRebootInstance:
+    Type: String
+    Default: lambda/lambda-reboot-instance.yml
+  TemplateLambdaShutdownInstance:
+    Type: String
+    Default: lambda/lambda-shutdown-instance.yml
+  OAuthToken:
+    Type: String
+    Default: fqJxMgWrxY_mZGReVhV2
+  Environment:
+    Type: String
+    Default: prod
+
+Conditions: 
+  CreateResources: !Equals [ !Ref Environment, prod ]
+
+Resources:
+
+  HighPriorityAlarm:
+    Type: "AWS::SNS::Topic"
+    Properties: 
+      TopicName: !Sub High-Priority-Alarm-${Environment}
+
+  LambdaRebootInstance:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateLambdaRebootInstance
+      OAuthToken: !Ref OAuthToken
+
+  LambdaShutdownInstance:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateLambdaShutdownInstance
+      OAuthToken: !Ref OAuthToken
+      Parameters:
+        StopScheduleRule: 'cron(0 20 ? * MON-FRI *)'
+        StartScheduleRule: 'cron(0 7 ? * MON-FRI *)'
+        AlarmSNSTopic: !Ref HighPriorityAlarm
+

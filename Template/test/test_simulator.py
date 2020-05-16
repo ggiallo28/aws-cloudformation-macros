@@ -4,6 +4,9 @@ sys.path.insert(1, 'source')
 
 import json
 import unittest
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from simulator import *
 from cfn_flip import to_json
@@ -19,7 +22,8 @@ params = {'EnvType': 'prod', 'NameIndex': '1'}
 class TestSimulatorMethods(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.obj = Simulator(data, params).simulate(excude_clean=['Conditions'])
+        cls.cfn = Simulator(data, params)
+        cls.obj = cls.cfn.simulate(excude_clean=['Conditions'])
 
     def test_obj(self):
         self.assertTrue(self.obj)
@@ -55,7 +59,7 @@ class TestSimulatorMethods(unittest.TestCase):
             self.obj['Resources']['EC2Instance']['Properties']['SelectTest'],
             'grapes')
 
-    def test_sub(self):
+    def test_sub(self): 
         self.assertEqual(
             self.obj['Resources']['EC2Instance']['Properties']['SubTest'],
             'arn:aws:ec2:us-east-1:1234567890:vpc/1')
@@ -64,22 +68,22 @@ class TestSimulatorMethods(unittest.TestCase):
             'www.1prod')
         self.assertEqual(
             self.obj['Resources']['EC2Instance']['Properties']
-            ['SubStackNameRegion']['Fn::Sub'],
-            'arn:aws:ec2:us-east-1:1234567890:vpc/${AWS::StackName}')
+            ['SubStackNameRegion']['Fn::Join'][1],
+            ['arn:aws:ec2:us-east-1:1234567890:vpc/',{"Ref": "AWS::StackName"}])
         self.assertEqual(
             self.obj['Resources']['EC2Instance']['Properties']['SubStackName']
-            ['Fn::Sub'], '${AWS::StackName}-low-prod')
+            ['Fn::Join'][1], [{"Ref": "AWS::StackName"},'-low-prod'])
 
     def test_userdata(self):
         self.assertEqual(
             self.obj['Resources']['EC2Instance']['Properties']['UserData']
-            ['Fn::Base64']['Fn::Join'][1][2]['Fn::Sub'],
-            '/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --configsets wordpress_install --region us-east-1 prod'
+            ['Fn::Base64']['Fn::Join'][1][2]['Fn::Join'][1],
+            ['/opt/aws/bin/cfn-init -v --stack ', {'Ref': 'AWS::StackName'},' --resource LaunchConfig --configsets wordpress_install --region us-east-1 prod']
         )
         self.assertEqual(
             self.obj['Resources']['EC2Instance']['Properties']['UserData']
-            ['Fn::Base64']['Fn::Join'][1][3]['Fn::Sub'],
-            '/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region us-east-1 1'
+            ['Fn::Base64']['Fn::Join'][1][3]['Fn::Join'][1],
+            ['/opt/aws/bin/cfn-signal -e $? --stack ', {'Ref': 'AWS::StackName'} ,' --resource WebServerGroup --region us-east-1 1']
         )
 
     def test_split(self):
@@ -93,6 +97,25 @@ class TestSimulatorMethods(unittest.TestCase):
         self.assertTrue(
             type(self.obj['Resources']['DependsOnResource']['DependsOn']) ==
             list)
+
+    def test_sub_to_join(self):
+        source = {
+            "test1": { "Fn::Sub": [ "www.${Domain}", { "Domain": {"Ref" : "RootDomainName" }} ]},
+            "test2": { "Fn::Sub": "arn:aws:ec2: ${AWS::Region}:${AWS::AccountId}:vpc/${vpc}" },
+            "test3": { "Fn::Sub": [ "www.${Domain}", { "Domain": { "Fn::Sub": "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${vpc}" }} ]}
+        }
+        target = {
+            "test1": { "Fn::Join": ["",[ "www.", {"Ref" : "RootDomainName" } ]]},
+            "test2": { "Fn::Join": ["",["arn:aws:ec2: ",{"Ref": "AWS::Region"},":",{"Ref" : "AWS::AccountId"},":vpc/",{"Ref":"vpc"}]]},
+            "test3": { "Fn::Join": ["", ["www.", 
+                    { "Fn::Join": ["", ["arn:aws:ec2:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":vpc/", { "Ref": "vpc" }]]} 
+                ]] }
+        }        
+
+        result = self.cfn.sub_to_join(source)
+        self.assertEqual(result['test1'], target['test1'])
+        self.assertEqual(result['test2'], target['test2'])
+        self.assertEqual(result['test3'], target['test3'])
 
 
 if __name__ == '__main__':

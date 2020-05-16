@@ -10,6 +10,7 @@ from cfn_flip import to_json
 import logging
 import boto3
 import git
+import gitlab
 
 from simulator import *
 
@@ -114,7 +115,8 @@ class Git(Template):
     props = {
         'Mode': (basestring, True),
         'Provider': (basestring, True),
-        'Repo': (basestring, True),
+        'Repo': (basestring, False),
+        'Project': (basestring, False), 
         'Path': (basestring, True),
         'Branch': (basestring, False),
         'Owner': (basestring, False),
@@ -182,6 +184,24 @@ class Git(Template):
 
         return template
 
+    def _gitlab_import(self):
+        logging.info('Import {} from Gitlab.'.format(self.title))
+
+        project = self.get_value('Project')
+        branch = self.get_value('Branch', default=BRANCH_DEFAULT)
+        path = self.get_value('Path', default=TEMPLATE_NAME_DEFAULT)
+
+        token = self.get_value('OAuthToken', default='')
+
+        gl = gitlab.Gitlab('https://gitlab.com', private_token=token, api_version=4)
+        gl.auth()
+
+        project = gl.projects.get(project)
+        template = project.files.raw(file_path=path, ref=branch)
+
+        return json.loads(to_json(template))
+
+
     def download(self):
         provider = self.get_value('Provider')
 
@@ -190,6 +210,9 @@ class Git(Template):
 
         if provider.lower() == 'codecommit':
             return self._codecommit_import()
+
+        if provider.lower() == 'gitlab':
+            return self._gitlab_import()
 
 class S3(Template):
     resource_type = Template.macro_prefix + 'S3'
