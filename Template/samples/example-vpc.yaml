@@ -11,15 +11,12 @@ Parameters:
   BranchName:
     Type: String
     Default: master
-  TemplateLambdaRebootInstance:
+  TemplateVPC:
     Type: String
-    Default: lambda/lambda-reboot-instance.yml
-  TemplateLambdaShutdownInstance:
-    Type: String
-    Default: lambda/lambda-shutdown-instance.yml
+    Default: vpc/vpc.yml
   OAuthToken:
     Type: String
-    Default: fqJxMgWrxY_mZGReVhV2
+    Default: 
   Environment:
     Type: String
     Default: prod
@@ -34,28 +31,26 @@ Resources:
     Properties: 
       TopicName: !Sub High-Priority-Alarm-${Environment}
 
-  LambdaRebootInstance:
+  VirtualPrivateCloud:
     Type: Template::Git
     Properties:
       Mode: Inline
       Provider: Gitlab
       Project: !Ref ProjectName
       Branch: !Ref BranchName
-      Path: !Ref TemplateLambdaRebootInstance
-      OAuthToken: !Ref OAuthToken
-
-  LambdaShutdownInstance:
-    Type: Template::Git
-    Properties:
-      Mode: Inline
-      Provider: Gitlab
-      Project: !Ref ProjectName
-      Branch: !Ref BranchName
-      Path: !Ref TemplateLambdaShutdownInstance
+      Path: !Ref TemplateVPC
       OAuthToken: !Ref OAuthToken
       Parameters:
-        StopScheduleRule: 'cron(0 20 ? * MON-FRI *)'
-        StartScheduleRule: 'cron(0 7 ? * MON-FRI *)'
-        AlarmSNSTopic: !Ref HighPriorityAlarm
-        AlarmCountName: []
+        AccountName: 'test'
+        Environment: !Ref Environment
+        Owner: 'giallo'
+        CentroCosti: 'aws'
+        Project: 'no'
+        VpcCidr: '10.88.135.0/24'
+        PrivateSubnetCidrA: '10.88.135.0/26'
+        PrivateSubnetCidrB: '10.88.135.64/26'
+        PublicSubnetCidrA: '10.88.135.128/26'
+        PublicSubnetCidrB: '10.88.135.192/26'
+
+
 

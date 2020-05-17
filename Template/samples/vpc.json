@@ -1,0 +1,811 @@
+{
+  "Description": "This template is the result of the merge. VPC With Public and Private Subnet (VPN and Peering optional)",
+  "Outputs": {
+    "73MP2373VirtualPrivateCloudInternetGateway": {
+      "Description": "Internet Gateway ID",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-IGW"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudInternetGateway"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPrivateRouteTableA": {
+      "Description": "RouteTableId of the private subnet A",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PrivateRouteTableA"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPrivateRouteTableA"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPrivateRouteTableB": {
+      "Description": "RouteTableId of the private subnet B",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PrivateRouteTableB"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPrivateRouteTableB"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnet": {
+      "Description": "SubnetID of private subnet",
+      "Value": {
+        "Fn::Join": [
+          ",",
+          [
+            {
+              "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetA"
+            },
+            {
+              "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetB"
+            }
+          ]
+        ]
+      }
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetA": {
+      "Description": "SubnetId of PrivateSubnetA subnet",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PrivateSubnetA"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetA"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetB": {
+      "Description": "SubnetId of PrivateSubnetB subnet",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PrivateSubnetB"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetB"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnet": {
+      "Description": "SubnetID of public subnet",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PublicSubnet"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Fn::Join": [
+          ",",
+          [
+            {
+              "Ref": "73MP2373VirtualPrivateCloudPublicSubnetA"
+            },
+            {
+              "Ref": "73MP2373VirtualPrivateCloudPublicSubnetB"
+            }
+          ]
+        ]
+      }
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetA": {
+      "Description": "SubnetId of PublicSubnetA subnet",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PublicSubnetA"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPublicSubnetA"
+      }
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetB": {
+      "Description": "SubnetId of PublicSubnetB subnet",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-PublicSubnetB"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudPublicSubnetB"
+      }
+    },
+    "73MP2373VirtualPrivateCloudVPCId": {
+      "Description": "VPCId of the newly created VPC",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-VPC-id"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Ref": "73MP2373VirtualPrivateCloudVPC"
+      }
+    },
+    "73MP2373VirtualPrivateCloudVpcCidr": {
+      "Description": "VPC Network in CIDR format",
+      "Export": {
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              "73MP2373VirtualPrivateCloud",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "AWSStackName"
+                    },
+                    "-VpcCidr"
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "73MP2373VirtualPrivateCloudVPC",
+          "CidrBlock"
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "GitHubUser": {
+      "Type": "String",
+      "Default": "ggiallo28"
+    },
+    "ProjectName": {
+      "Type": "String",
+      "Default": "xp-coast/xpeppers/xpeppers-cloudformation-sample"
+    },
+    "BranchName": {
+      "Type": "String",
+      "Default": "master"
+    },
+    "TemplateVPC": {
+      "Type": "String",
+      "Default": "vpc/vpc.yml"
+    },
+    "OAuthToken": {
+      "Type": "String",
+      "Default": "YsfRzFo-Fa5HxhhCui_-"
+    },
+    "Environment": {
+      "Type": "String",
+      "Default": "prod"
+    }
+  },
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "HighPriorityAlarm": {
+      "Properties": {
+        "TopicName": "High-Priority-Alarm-prod"
+      },
+      "Type": "AWS::SNS::Topic"
+    },
+    "73MP2373VirtualPrivateCloudInboundPrivateNetworkAclEntry": {
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "false",
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateNetworkAcl"
+        },
+        "PortRange": {
+          "From": "0",
+          "To": "65535"
+        },
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100"
+      },
+      "Type": "AWS::EC2::NetworkAclEntry"
+    },
+    "73MP2373VirtualPrivateCloudInboundPublicNetworkAclEntry": {
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "false",
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicNetworkAcl"
+        },
+        "PortRange": {
+          "From": "0",
+          "To": "65535"
+        },
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100"
+      },
+      "Type": "AWS::EC2::NetworkAclEntry"
+    },
+    "73MP2373VirtualPrivateCloudInternetGateway": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "IGW"
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "73MP2373VirtualPrivateCloudInternetGatewayAttachment": {
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "73MP2373VirtualPrivateCloudInternetGateway"
+        },
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "73MP2373VirtualPrivateCloudOutBoundPrivateNetworkAclEntry": {
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateNetworkAcl"
+        },
+        "PortRange": {
+          "From": "0",
+          "To": "65535"
+        },
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100"
+      },
+      "Type": "AWS::EC2::NetworkAclEntry"
+    },
+    "73MP2373VirtualPrivateCloudOutBoundPublicNetworkAclEntry": {
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicNetworkAcl"
+        },
+        "PortRange": {
+          "From": "0",
+          "To": "65535"
+        },
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100"
+      },
+      "Type": "AWS::EC2::NetworkAclEntry"
+    },
+    "73MP2373VirtualPrivateCloudPrivateNetworkAcl": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "PrivateACL"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::NetworkAcl"
+    },
+    "73MP2373VirtualPrivateCloudPrivateRouteTableA": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "Private",
+                  "A"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::RouteTable"
+    },
+    "73MP2373VirtualPrivateCloudPrivateRouteTableB": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "Private",
+                  "B"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::RouteTable"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetA": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": "us-east-1"
+            }
+          ]
+        },
+        "CidrBlock": "10.88.135.0/26",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "73MP2373VirtualPrivateCloudPrivateSubnetA"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetB": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": "us-east-1"
+            }
+          ]
+        },
+        "CidrBlock": "10.88.135.64/26",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "73MP2373VirtualPrivateCloudPrivateSubnetB"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetNetworkAclAssociationA": {
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateNetworkAcl"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetA"
+        }
+      },
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetNetworkAclAssociationB": {
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateNetworkAcl"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetB"
+        }
+      },
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetRouteTableAssociationA": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateRouteTableA"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetA"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPrivateSubnetRouteTableAssociationB": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateRouteTableB"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPrivateSubnetB"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPublicNetworkAcl": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "test-prod-PublicACL"
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::NetworkAcl"
+    },
+    "73MP2373VirtualPrivateCloudPublicRoute": {
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "73MP2373VirtualPrivateCloudInternetGateway"
+        },
+        "RouteTableId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicRouteTable"
+        }
+      },
+      "Type": "AWS::EC2::Route",
+      "DependsOn": [
+        "73MP2373VirtualPrivateCloudInternetGateway"
+      ]
+    },
+    "73MP2373VirtualPrivateCloudPublicRouteTable": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "Public"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::RouteTable"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetA": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": "us-east-1"
+            }
+          ]
+        },
+        "CidrBlock": "10.88.135.128/26",
+        "MapPublicIpOnLaunch": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "73MP2373VirtualPrivateCloudPublicSubnetA"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetB": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": "us-east-1"
+            }
+          ]
+        },
+        "CidrBlock": "10.88.135.192/26",
+        "MapPublicIpOnLaunch": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod",
+                  "73MP2373VirtualPrivateCloudPublicSubnetB"
+                ]
+              ]
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "73MP2373VirtualPrivateCloudVPC"
+        }
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetNetworkAclAssociationA": {
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicNetworkAcl"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicSubnetA"
+        }
+      },
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetNetworkAclAssociationB": {
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicNetworkAcl"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicSubnetB"
+        }
+      },
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetRouteTableAssociationA": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicSubnetA"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "73MP2373VirtualPrivateCloudPublicSubnetRouteTableAssociationB": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "73MP2373VirtualPrivateCloudPublicSubnetB"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "73MP2373VirtualPrivateCloudVPC": {
+      "Properties": {
+        "CidrBlock": "10.88.135.0/24",
+        "EnableDnsHostnames": "true",
+        "EnableDnsSupport": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "-",
+                [
+                  "test",
+                  false,
+                  "prod"
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::VPC"
+    }
+  }
+}

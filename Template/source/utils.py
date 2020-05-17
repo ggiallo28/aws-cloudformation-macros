@@ -34,7 +34,6 @@ class TemplateLoader(TemplateGenerator):
         assert(create_key == TemplateLoader.__create_key), \
             "TemplateLoader objects must be created using TemplateLoader.loads or TemplateLoader.init"
         super(TemplateLoader, self).__init__(cf_template, **kwargs)
-        self._to_replace = []
 
     def __iter__(self):
         fields = list(vars(self).keys())
@@ -69,8 +68,10 @@ class TemplateLoader(TemplateGenerator):
 
         if type(data) == dict:
             return dict(map(self._translate, data.items()))
+
         if type(data) == list:
             return list(map(self._translate, data))
+
         if type(data) == tuple:
             key, value = data
             # Change the name of the reference
@@ -89,15 +90,7 @@ class TemplateLoader(TemplateGenerator):
                     "Fn::Join": ["-", [self.prefix, value["Name"]]]
                 }
 
-            ## The reference in DependsOn is changed. A reference can have the Macro:: prefix, it must be preserved.
-            #if key == "DependsOn":
-            #    for index, _ in enumerate(value):
-            #        if value[index].replace(Template.macro_prefix,
-            #                                "") in self.logical_ids:
-            #            value[index] = Template.macro_prefix + self.prefix + value[
-            #                index].replace(Template.macro_prefix, "")
-
-            # Finally we change the logical id for the resource
+            ## Finally we change the logical id for the resource
             if key in self.logical_ids:
                 key = self.prefix + key
 
@@ -111,6 +104,10 @@ class TemplateLoader(TemplateGenerator):
                 if values[1] != self.prefix:
                     values.insert(1, self.prefix)
                     data = Template.macro_separator.join(values)
+
+            if data in self.logical_ids:
+                data = self.prefix + data
+
         return data
 
     # To avoid conflicts during inline import the logical id for each resource is changed.
@@ -118,13 +115,12 @@ class TemplateLoader(TemplateGenerator):
     def translate(self, prefix):
         self.prefix = prefix
         self.logical_ids = []
-        for _, value in self:
+        for prop, value in self:
             if type(value) == dict:
                 # Get all resources logica ids
                 self.logical_ids += list(value.keys())
 
-        json_string = json.loads(self.to_json())
-        json_string = self._translate(json_string)
+        json_string = self._translate(self.to_dict())
         return self.loads(json_string)
 
 
@@ -265,7 +261,8 @@ class TemplateLoader(TemplateGenerator):
                 args[0] = args[0].replace(Template.macro_prefix, "")
                 return ''.join(args).replace(":", "")
         if type(args) == str:
-            return args.replace(Template.macro_prefix, "").replace(":", "")
+            if args.startswith(Template.macro_prefix):
+                return args.replace(Template.macro_prefix, "").replace(":", "")
 
         return args
 

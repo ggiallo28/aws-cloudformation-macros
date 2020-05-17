@@ -124,6 +124,89 @@ class TestUtilsMethods(unittest.TestCase):
             [ 'Template::{}::SNSTopiInlineCondition::UrgentPriorityAlarm'.format(self._prefix), 'TopicName' ]
         )
 
+    def test_translate_depends_on(self):
+        snippet = {
+            "Resources": {
+                "InternetGateway": {
+                    "Properties": {},
+                    "Type": "AWS::EC2::InternetGateway"
+                },
+                "PublicRoute": {
+                    "Properties": {
+                        "DestinationCidrBlock": "0.0.0.0/0",
+                        "GatewayId": {
+                            "Ref": "InternetGateway"
+                        },
+                        "RouteTableId": {
+                            "Ref": "InternetGateway"
+                        }
+                    },
+                    "Type": "AWS::EC2::Route",
+                    "DependsOn": [
+                      "InternetGateway"
+                    ]
+                }
+            }
+        }
+
+        PREFIX = 'PREFIX'
+
+        template = TemplateLoader.loads(snippet)
+        template = template.translate(prefix=self._prefix).to_dict()
+
+        self.assertEqual(
+            template['Resources'][PREFIX+'PublicRoute']['DependsOn'], 
+            [PREFIX+'InternetGateway']
+        ) 
+
+    def test_translate_property(self):   
+        snippet = {
+            "Resources": {
+                "InternetGateway": {
+                    "Properties": {},
+                    "Type": "AWS::EC2::InternetGateway"
+                },
+                "InternetGatewayAttachment": {
+                    "Type": "AWS::EC2::VPCGatewayAttachment",
+                    "Properties": {
+                        "VpcId": {
+                            "Ref": "VPC"
+                        },
+                        "InternetGatewayId": {
+                            "Ref": "InternetGateway"
+                        }
+                    }
+                },
+            },
+            "Outputs": {
+                "InternetGatewayId": {
+                    "Description": "Internet Gateway ID",
+                    "Value": {
+                        "Ref": "InternetGateway"
+                    },
+                    "Export": {
+                        "Name": {
+                            "Fn::Sub": "${AWS::StackName}-IGW"
+                        }
+                    }
+                }
+            }
+        }
+
+        PREFIX = 'PREFIX'
+
+        cfn = Simulator(snippet, {})
+        template = cfn.simulate()
+
+        template = TemplateLoader.loads(template)
+        template = template.translate(prefix=PREFIX)
+
+        template = template.evaluate_custom_expression()
+
+        self.assertEqual(
+            template['Outputs'][PREFIX+'InternetGatewayArn']['Export']['Name']['Fn::Join'][1][1]['Fn::Join'][1][0]['Ref'], 
+            'AWS::StackName'
+        ) 
 
 class TestAttrsMethods(unittest.TestCase):
 
@@ -168,7 +251,7 @@ class TestAttrsMethods(unittest.TestCase):
             'SNSTopiInlineCondition' : (cls.main_template.resources['SNSTopiInlineCondition'], cls.SNSTopiInlineCondition),
             'SNSTopicS3' : (cls.main_template.resources['SNSTopicS3'], cls.SNSTopicS3),
             'DoubleSNSTopicS3' : (cls.main_template.resources['DoubleSNSTopicS3'], cls.DoubleSNSTopicS3),
-            'Nested2InlineTarget' : (cls.main_template.resources['Nested2InlineTarget'], cls.Nested2InlineTarget),
+            'Nested2InlineTarget' : (cls.main_template.resources['Nested2InlineTarget'], cls.Nested2InlineTarget)
         }
 
     def test_set_attrs_inline_dependson_nested(self):

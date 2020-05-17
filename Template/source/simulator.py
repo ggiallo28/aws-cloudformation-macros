@@ -38,7 +38,6 @@ class Simulator():
 
         self.template = self.cleanup(self.template, excude_clean)
 
-
         return self.template
 
     def sub_to_join(self, data):
