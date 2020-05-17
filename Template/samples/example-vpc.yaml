@@ -16,7 +16,7 @@ Parameters:
     Default: vpc/vpc.yml
   OAuthToken:
     Type: String
-    Default: 
+    Default: YsfRzFo-Fa5HxhhCui_-
   Environment:
     Type: String
     Default: prod

@@ -91,8 +91,8 @@ class TemplateLoader(TemplateGenerator):
                 }
 
             ## Finally we change the logical id for the resource
-            if key in self.logical_ids:
-                key = self.prefix + key
+            #if key in self.logical_ids:
+            #    key = self.prefix + key
 
             # Recursive call to translate the whole template
             return (key, self._translate(value))
@@ -119,6 +119,7 @@ class TemplateLoader(TemplateGenerator):
             if type(value) == dict:
                 # Get all resources logica ids
                 self.logical_ids += list(value.keys())
+                self[prop] = {(prefix + lid):value[lid]for lid in value.keys()}
 
         json_string = self._translate(self.to_dict())
         return self.loads(json_string)

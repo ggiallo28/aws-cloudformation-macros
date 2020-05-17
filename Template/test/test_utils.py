@@ -204,9 +204,14 @@ class TestUtilsMethods(unittest.TestCase):
         template = template.evaluate_custom_expression()
 
         self.assertEqual(
-            template['Outputs'][PREFIX+'InternetGatewayArn']['Export']['Name']['Fn::Join'][1][1]['Fn::Join'][1][0]['Ref'], 
+            template['Outputs'][PREFIX+'InternetGatewayId']['Export']['Name']['Fn::Join'][1][1]['Fn::Join'][1][0]['Ref'], 
             'AWS::StackName'
-        ) 
+        )
+
+        self.assertEqual(
+            template['Resources'][PREFIX+'InternetGatewayAttachment']['Properties']['InternetGatewayId'], 
+            {'Ref': 'PREFIXInternetGateway'}
+        )
 
 class TestAttrsMethods(unittest.TestCase):
 
