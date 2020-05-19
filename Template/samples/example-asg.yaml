@@ -8,7 +8,7 @@ Parameters:
   BranchName:
     Type: String
     Default: master
-  TemplateBeanstalk:
+  TemplateWebServer:
     Type: String
     Default: alb-autoscaling/alb-autoscaling.yaml
   OAuthToken:
@@ -41,7 +41,7 @@ Resources:
       Provider: Gitlab
       Project: !Ref ProjectName
       Branch: !Ref BranchName
-      Path: !Ref TemplateBeanstalk
+      Path: !Ref TemplateWebServer
       OAuthToken: !Ref OAuthToken
       Parameters:
         VPCStackName: !Ref VPCStackName

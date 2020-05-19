@@ -14,9 +14,12 @@ Parameters:
   TemplateFlowLog:
     Type: String
     Default: flowlog-crr/flowlog.yml
+  TemplateNLB:
+    Type: String
+    Default: nlb-autoscaling/nlb-autoscaling.yaml
   GitLabToken:
     Type: String
-    Default: vLy_f4quEcLPkKyMQksm
+    Default: JeqznsSA98T48ev-SLFg
   Environment:
     Type: String
     Default: prod
@@ -62,5 +65,12 @@ Resources:
         VPCId: !Ref Template::VirtualPrivateCloud::VPC
         CRRDestinationBucket: !Ref DefaultBucket
         CRRDestinationAccountId: 'giallo'
+
+
+
+
+
+
+
 
 

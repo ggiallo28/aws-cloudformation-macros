@@ -1,0 +1,64 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateRDS:
+    Type: String
+    Default: rds/rds-old.json
+  GitLabToken:
+    Type: String
+    Default: JeqznsSA98T48ev-SLFg
+  Environment:
+    Type: String
+    Default: prod
+  DefaultBucket:
+    Type: String
+    Default: macro-template-default-831650818513-us-east-1
+  VPCStackName:
+    Type: String
+    Default: TemplateVPC 
+
+Resources:
+
+  Database:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateRDS
+      OAuthToken: !Ref GitLabToken
+      Parameters:
+        Project: 'test'
+        Environment: !Ref Environment
+        Service: 'macro'
+        Role: backend
+        VpcId:
+          Fn::ImportValue:
+            !Sub "VirtualPrivateCloud-${VPCStackName}-VPC-id"
+        Subnets: 
+          - Fn::ImportValue:
+              !Sub "VirtualPrivateCloud-${VPCStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "VirtualPrivateCloud-${VPCStackName}-PrivateSubnetB"
+        DBUsername: 'giallo'
+        DBPassword: 'giallo123456!'
+        InstanceType: 'db.m4.large'
+        ReadReplica: 'false'
+        DBAllocatedStorage: '10'
+        MyIpAddress: '192.168.1.1/32'
+        MultiAZ: 'false'
+
+
+
+
+
+
+

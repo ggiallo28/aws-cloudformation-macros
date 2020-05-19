@@ -1,0 +1,55 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateRDS:
+    Type: String
+    Default: rds/rds-old.json
+  TemplateNLB:
+    Type: String
+    Default: nlb-autoscaling/nlb-autoscaling.yaml
+  GitLabToken:
+    Type: String
+    Default: JeqznsSA98T48ev-SLFg
+  Environment:
+    Type: String
+    Default: prod
+  DefaultBucket:
+    Type: String
+    Default: macro-template-default-831650818513-us-east-1
+  VPCStackName:
+    Type: String
+    Default: TemplateVPC 
+
+Resources:
+
+  NetworkLoadBanacer:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateNLB
+      OAuthToken: !Ref GitLabToken
+      Parameters:
+        VPCStackName: !Sub "VirtualPrivateCloud-${VPCStackName}"
+        AccountName: 'test'
+        Environment: !Ref Environment
+        Owner: 'giallo'
+        CentroCosti: 'aws'
+        Project: 'test'
+        InstanceName: 'frontend'
+        KeyName: 'ggiallo28_2'
+        AssignPublicIP: 'false'
+        HostedZoneName: ''
+        InstanceType: 't2.micro'
+        InstanceAMI: 'ami-0323c3dd2da7fb37d'
+
+

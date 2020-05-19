@@ -35,3 +35,18 @@ example-ec2:
 	aws cloudformation package --template-file example-ec2.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
 	aws cloudformation deploy --template-file ./example.output --stack-name TemplateBastionHost --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM || echo "Continue"
 	rm -f ./example.output
+
+example-nlb:
+	aws cloudformation package --template-file example-nlb.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
+	aws cloudformation deploy --template-file ./example.output --stack-name TemplateFrontend --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM || echo "Continue"
+	rm -f ./example.output
+
+example-db:
+	aws cloudformation package --template-file example-db.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
+	aws cloudformation deploy --template-file ./example.output --stack-name TemplateDatabase --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM || echo "Continue"
+	rm -f ./example.output
+
+example-3tier:
+	aws cloudformation package --template-file example-3tier.yaml --s3-bucket $(BUCKET) --output-template-file example.output  || echo "Continue"
+	aws cloudformation deploy --template-file ./example.output --stack-name Template3Tier --region $(REGION) --parameter-overrides Environment=prod --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM || echo "Continue"
+	rm -f ./example.output

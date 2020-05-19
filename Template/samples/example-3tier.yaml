@@ -1,0 +1,127 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateWebServer:
+    Type: String
+    Default: alb-autoscaling/alb-autoscaling.yaml
+  TemplateRDS:
+    Type: String
+    Default: rds/rds-old.json
+  TemplateS3:
+    Type: String
+    Default: s3/s3.yaml
+  Token:
+    Type: String
+    Default: 2sePcsuzvBR9g7xrLmot
+  Environment:
+    Type: String
+    Default: prod
+  VPCStackName:
+    Type: String
+    Default: VirtualPrivateCloud-TemplateVPC     
+
+Resources:
+
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties: 
+      Name: macro.sample
+      VPCs: 
+        - 
+          VPCId: 
+            Fn::ImportValue:
+              !Sub "${VPCStackName}-VPC-id"
+          VPCRegion: !Ref 'AWS::Region'
+
+  Application:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateWebServer
+      OAuthToken: !Ref Token
+      Parameters:
+        VPCStackName: !Ref VPCStackName
+        AccountName: 'xpeppers-test'
+        Environment: 'production'
+        Owner: 'ggiallo'
+        CentroCosti: 'aws'
+        Project: 'macro-v2'
+        InstanceName: 'macro-v2'
+        KeyName: 'ggiallo28_2'
+        AssignPublicIP: 'false'
+        HostedZoneName: macro.sample
+        HostedZoneID: !Ref HostedZone
+        InstanceType: 't2.micro'
+        ALBcertificateARN: ''
+        InstanceAMI: 'ami-0323c3dd2da7fb37d'
+
+  Database:
+    Type: Template::Git
+    DependsOn: Template::Bucket
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateRDS
+      OAuthToken: !Ref Token
+      Parameters:
+        Project: 'tiers-v2'
+        Environment: !Ref Environment
+        Service: 'macro-v2'
+        Role: 'backend-v2'
+        VpcId:
+          Fn::ImportValue:
+            !Sub "${VPCStackName}-VPC-id"
+        Subnets: 
+          - Fn::ImportValue:
+              !Sub "${VPCStackName}-PrivateSubnetA"
+          - Fn::ImportValue:
+              !Sub "${VPCStackName}-PrivateSubnetB"
+        DBUsername: 'giallov2'
+        DBPassword: 'giallo123456!'
+        InstanceType: 'db.m4.large'
+        ReadReplica: 'false'
+        DBAllocatedStorage: '10'
+        MyIpAddress: '192.168.1.1/32'
+        MultiAZ: 'false'
+
+  DNS: 
+    Type: "AWS::Route53::HostedZone"
+    Properties: 
+      HostedZoneConfig: 
+        Comment: 'My hosted zone for example.com'
+      Name: 'giallo-macro.com'
+
+  Bucket:
+    Type: Template::Git
+    DependsOn: [
+      HostedZone,
+      DNS
+    ]
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateS3
+      OAuthToken: !Ref Token
+      Parameters:
+        AccountName: 'xpeppers-test'
+        Owner: 'ggiallo'
+        CentroCosti: 'aws'
+        Project: 'macro'        
+        Environment: 'production'
+        DomainName: 'giallo-macro.com'
+        HostedZoneName: 'giallo-macro.com.'
+
