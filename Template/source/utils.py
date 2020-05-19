@@ -98,10 +98,11 @@ class TemplateLoader(TemplateGenerator):
             return (key, self._translate(value))
 
         # Update all custom references
+        ### and values[1] in self.logical_ids: definire test case
         if type(data) == str:
             if data.startswith(Template.macro_prefix):
                 values = data.split(Template.macro_separator)
-                if values[1] != self.prefix:
+                if values[1] != self.prefix and values[1] in self.logical_ids:
                     values.insert(1, self.prefix)
                     data = Template.macro_separator.join(values)
 

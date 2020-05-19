@@ -2,9 +2,6 @@ Transform: [Template]
 Description: Example Macro Template.
 
 Parameters:
-  GitHubUser:
-    Type: String
-    Default: ggiallo28
   ProjectName:
     Type: String
     Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
@@ -14,22 +11,20 @@ Parameters:
   TemplateVPC:
     Type: String
     Default: vpc/vpc.yml
-  OAuthToken:
+  TemplateFlowLog:
     Type: String
-    Default: YsfRzFo-Fa5HxhhCui_-
+    Default: flowlog-crr/flowlog.yml
+  GitLabToken:
+    Type: String
+    Default: vLy_f4quEcLPkKyMQksm
   Environment:
     Type: String
     Default: prod
-
-Conditions: 
-  CreateResources: !Equals [ !Ref Environment, prod ]
+  DefaultBucket:
+    Type: String
+    Default: macro-template-default-831650818513-us-east-1
 
 Resources:
-
-  HighPriorityAlarm:
-    Type: "AWS::SNS::Topic"
-    Properties: 
-      TopicName: !Sub High-Priority-Alarm-${Environment}
 
   VirtualPrivateCloud:
     Type: Template::Git
@@ -39,18 +34,33 @@ Resources:
       Project: !Ref ProjectName
       Branch: !Ref BranchName
       Path: !Ref TemplateVPC
-      OAuthToken: !Ref OAuthToken
+      OAuthToken: !Ref GitLabToken
       Parameters:
         AccountName: 'test'
         Environment: !Ref Environment
         Owner: 'giallo'
         CentroCosti: 'aws'
-        Project: 'no'
+        Project: !Select [ 2, !Split [ '/', !Ref ProjectName ] ]
         VpcCidr: '10.88.135.0/24'
         PrivateSubnetCidrA: '10.88.135.0/26'
         PrivateSubnetCidrB: '10.88.135.64/26'
         PublicSubnetCidrA: '10.88.135.128/26'
         PublicSubnetCidrB: '10.88.135.192/26'
 
+  FlowLogs:
+    Type: Template::Git
+    DependsOn: Template::VirtualPrivateCloud
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateFlowLog
+      OAuthToken: !Ref GitLabToken
+      Parameters:
+        Constructor: 'flowlog-test'
+        VPCId: !Ref Template::VirtualPrivateCloud::VPC
+        CRRDestinationBucket: !Ref DefaultBucket
+        CRRDestinationAccountId: 'giallo'
 
 

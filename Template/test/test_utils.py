@@ -589,5 +589,8 @@ class TestAttrsMethods(unittest.TestCase):
             ]]
         })
 
+    def test_local_custom_expression_evaluation(self):
+        self.assertEqual(0,1) # Riga 101 utils
+
 if __name__ == '__main__':
     unittest.main()

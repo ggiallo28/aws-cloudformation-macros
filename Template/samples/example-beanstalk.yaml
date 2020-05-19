@@ -1,0 +1,50 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateBeanstalk:
+    Type: String
+    Default: beanstalk/beanstalk-greennetworkweb.yaml
+  OAuthToken:
+    Type: String
+    Default: M4by_B9o2Mc7fqeCEwwX
+  Environment:
+    Type: String
+    Default: prod
+
+Resources:
+
+  LambdaShutdownInstance:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateBeanstalk
+      OAuthToken: !Ref OAuthToken
+      Parameters:
+        VPCStackName: VirtualPrivateCloud-TemplateVPC
+        AccountName: 'xpeppers-test'
+        Environment: 'production'
+        Owner: 'ggiallo'
+        CostCenter: 'aws'
+        Project: !Ref ProjectName
+        ApplicationName: 'macro'
+        StackType: 'python3'
+        AppEnvironmentName: !Ref Environment
+        AppS3Bucket: macro-template-default-831650818513-us-east-1
+        AppS3Key: 'cfn-beanstalk'
+        KeyName: 'cfn-beanstalk'
+        EC2InstanceType: t2.nano
+        RDSPassword: 'admin'
+        RDSUsername: 'admin'
+        RDSEndpoint: 'db.db'
+        DBName: 'macro'
+        SSHAccessCIDR: '192.168.0.1'

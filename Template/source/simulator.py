@@ -4,6 +4,7 @@ logging.basicConfig(level=logging.INFO)
 
 class Simulator():
     __params_regexp = r'\${AWS::[a-zA-Z0-9_]*}|\${[a-zA-Z0-9_]*}'
+    __getatt_regexp = r'\${[a-zA-Z0-9_]*\.[a-zA-Z0-9_]*}'
     __prefix = 'Template::'
 
     def __init__(self, template, params={}, custom_functions=[]):
@@ -38,7 +39,23 @@ class Simulator():
 
         self.template = self.cleanup(self.template, excude_clean)
 
+        #self.template = self.parse_int(self.template)
+
         return self.template
+
+#    def parse_int(self, data):
+#        if type(data) == dict:
+#            return dict(filter(lambda x: not x is None, map(self.parse_int,
+#                                         data.items())))
+#        if type(data) == list:
+#            return list(filter(lambda x: not x is None, map(self.parse_int, data)))
+#        if type(data) == tuple:
+#            key, value = data
+#            return (key, self.parse_int(value))  
+#        try:
+#            return int(data)
+#        except:
+#            return data
 
     def sub_to_join(self, data):
         if type(data) == dict:
@@ -50,12 +67,15 @@ class Simulator():
                 if type(sub_values) == list:
                     sub_string, sub_map = sub_values
 
-                join_values = re.split('('+self.__params_regexp+')', sub_string)
+                join_values = re.split('('+self.__params_regexp+'|'+self.__getatt_regexp+')', sub_string)
                 for index, element in enumerate(join_values):
                     if re.findall(self.__params_regexp, element):
                         reference_key = element[2:-1]
                         join_values[index] = sub_map.get(reference_key, 
                             {"Ref": reference_key})
+                    if re.findall(self.__getatt_regexp, element):
+                        reference_key = element[2:-1].split(".")
+                        join_values[index] = {"Fn::GetAtt": reference_key}
 
                 del data['Fn::Sub']
 

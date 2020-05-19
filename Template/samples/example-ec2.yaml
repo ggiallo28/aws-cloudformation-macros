@@ -1,0 +1,51 @@
+Transform: [Template]
+Description: Example Macro Template.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: xp-coast/xpeppers/xpeppers-cloudformation-sample
+  BranchName:
+    Type: String
+    Default: master
+  TemplateVPC:
+    Type: String
+    Default: ec2-autoscaling/ec2.yml
+  OAuthToken:
+    Type: String
+    Default: M4by_B9o2Mc7fqeCEwwX
+  Environment:
+    Type: String
+    Default: production
+  VPCStackName:
+    Type: String
+    Default: VirtualPrivateCloud-TemplateVPC    
+
+Resources:
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+
+  BastionHost:
+    Type: Template::Git
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateVPC
+      OAuthToken: !Ref OAuthToken
+      Parameters:
+        VPCStackName: !Ref VPCStackName
+        AccountName: 'test'
+        Environment: !Ref Environment
+        Owner: 'giallo'
+        CostCenter: 'aws'
+        Project: !Select [ 2, !Split [ '/', !Ref ProjectName ] ]       
+        LinuxDistro: 'CentOS'
+        RootEBSSize: 8
+        AMIid: 'ami-0323c3dd2da7fb37d'
+        EC2InstanceName: !Join ["-",[!Ref Environment, 'macro']]
+        EC2InstanceType: 't2.micro'
+        KeyName: 'ggiallo28_2'
+        ReservedEIP: !Ref ElasticIP

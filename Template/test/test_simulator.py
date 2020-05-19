@@ -117,6 +117,17 @@ class TestSimulatorMethods(unittest.TestCase):
         self.assertEqual(result['test2'], target['test2'])
         self.assertEqual(result['test3'], target['test3'])
 
+    def test_get_translate(self):
+        source = {
+            "test" : { "Fn::Sub": "${FlowLogsBucket.Arn}/${Constructor}/" }
+        }
+
+        result = self.cfn.sub_to_join(source)
+
+        self.assertEqual(result['test'],{
+                "Fn::Join": ["", [{"Fn::GetAtt": ["FlowLogsBucket", "Arn"]}, "/", {"Ref": "Constructor"}, "/"]]
+        })
+
 
 if __name__ == '__main__':
     unittest.main()
