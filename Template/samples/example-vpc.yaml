@@ -14,18 +14,35 @@ Parameters:
   TemplateFlowLog:
     Type: String
     Default: flowlog-crr/flowlog.yml
-  TemplateNLB:
+  TemplateBastion:
     Type: String
-    Default: nlb-autoscaling/nlb-autoscaling.yaml
+    Default: single-ec2-bastion/bastion.yaml
   GitLabToken:
     Type: String
-    Default: JeqznsSA98T48ev-SLFg
+    Default: UzzQB7j2ZkFzexsfeZyJ
   Environment:
     Type: String
     Default: prod
-  DefaultBucket:
+  AccountName:
     Type: String
-    Default: macro-template-default-831650818513-us-east-1
+    Default: 'xpeppers-test'
+  Owner:
+    Type: String
+    Default: 'giallo'
+  CentroCosti:
+    Type: String
+    Default: 'aws' 
+  BastionAmiId: 
+    Type: String
+    Default: ami-0323c3dd2da7fb37d
+  InstanceType:
+    Type: String
+    Default: t2.nano
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Default: 'ggiallo28_2'
 
 Resources:
 
@@ -39,10 +56,10 @@ Resources:
       Path: !Ref TemplateVPC
       OAuthToken: !Ref GitLabToken
       Parameters:
-        AccountName: 'test'
+        AccountName: !Ref AccountName
         Environment: !Ref Environment
-        Owner: 'giallo'
-        CentroCosti: 'aws'
+        Owner: !Ref Owner
+        CentroCosti: !Ref CentroCosti
         Project: !Select [ 2, !Split [ '/', !Ref ProjectName ] ]
         VpcCidr: '10.88.135.0/24'
         PrivateSubnetCidrA: '10.88.135.0/26'
@@ -61,15 +78,41 @@ Resources:
       Path: !Ref TemplateFlowLog
       OAuthToken: !Ref GitLabToken
       Parameters:
-        Constructor: 'flowlog-test'
+        Constructor: !Join ["-",[!Ref AccountName, !Ref Environment, 'flows-log']]
         VPCId: !Ref Template::VirtualPrivateCloud::VPC
-        CRRDestinationBucket: !Ref DefaultBucket
-        CRRDestinationAccountId: 'giallo'
+        CRRDestinationBucket: !Ref Template::DefaultBucket
+        CRRDestinationAccountId: !Ref AWS::AccountId
 
+  ElasticIP:
+    Type: AWS::EC2::EIP
 
-
-
-
+  BastionHost:
+    Type: Template::Git
+    DependsOn: Template::VirtualPrivateCloud
+    Properties:
+      Mode: Inline
+      Provider: Gitlab
+      Project: !Ref ProjectName
+      Branch: !Ref BranchName
+      Path: !Ref TemplateBastion
+      OAuthToken: !Ref GitLabToken
+      Parameters:
+        Environment: !Ref Environment
+        Project: !Select [ 2, !Split [ '/', !Ref ProjectName ] ]
+        AccountName: !Ref AccountName
+        Owner: !Ref Owner
+        CostCenter: !Ref CentroCosti
+        ImageId: !Ref BastionAmiId
+        InstanceName: 
+          Fn::Join:
+            - '-'
+            - - !Select [ 2, !Split [ '/', !Ref ProjectName ] ]
+              - !Ref Environment
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref KeyName
+        ReservedEIP: !Ref ElasticIP
+        VPCId: !Ref Template::VirtualPrivateCloud::VPC
+        SubnetId: !Ref Template::VirtualPrivateCloud::PublicSubnetA
 
 
 

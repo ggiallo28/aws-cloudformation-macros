@@ -929,5 +929,7 @@ Resources:
 
 - let user to provide git credentials as aws secret
 
-- extend cloudformation filed support, ex findinmap or metadata
+- use metadata
+
+- select commit tag
 

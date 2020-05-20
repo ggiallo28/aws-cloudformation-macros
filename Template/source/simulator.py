@@ -7,13 +7,14 @@ class Simulator():
     __getatt_regexp = r'\${[a-zA-Z0-9_]*\.[a-zA-Z0-9_]*}'
     __prefix = 'Template::'
 
-    def __init__(self, template, params={}, custom_functions=[]):
+    def __init__(self, template, params={}):
         import os
 
         self.data = template
         self.values = {
             'AWS::Region': os.environ.get('REGION', 'us-east-1'),
             'AWS::AccountId': os.environ.get('ACCOUNT', '1234567890'),
+            'Template::DefaultBucket': os.environ.get('DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1'),
             **{
                 key: self.data.get('Parameters')[key]['Default']
                 for key in self.data.get('Parameters', {}) if 'Default' in self.data.get(
