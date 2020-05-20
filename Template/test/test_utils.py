@@ -590,7 +590,50 @@ class TestAttrsMethods(unittest.TestCase):
         })
 
     def test_local_custom_expression_evaluation(self):
-        self.assertEqual(0,1) # Riga 101 utils
+        snippet = {
+            "Resources": {
+                "RemoteTemplate":{
+                    "Type": "AWS::CloudFormation::CustomResource",
+                    "Properties" : {
+                         "ServiceToken": {"Ref" : "Template::ExternalTemplate::LogicalId"} 
+                    }
+                },
+                "LogicalId":{
+                    "Type": "AWS::CloudFormation::CustomResource",
+                    "Properties" : {
+                         "ServiceToken": {"Ref" : "Template::RemoteTemplate::Resource"} 
+                    }
+                }
+            }
+        }
+
+        PREFIX = 'Prefix'
+
+        ## Do not change the prefix when Refetence is to externa resource.
+        target = {
+            "Resources": {
+                "{}RemoteTemplate".format(PREFIX):{
+                    "Type": "AWS::CloudFormation::CustomResource",
+                    "Properties" : {
+                         "ServiceToken": {"Ref" : "Template::ExternalTemplate::LogicalId"} 
+                    }
+                },
+                "{}LogicalId".format(PREFIX):{
+                    "Type": "AWS::CloudFormation::CustomResource",
+                    "Properties" : {
+                         "ServiceToken": {"Ref" : "Template::{}::RemoteTemplate::Resource".format(PREFIX)} 
+                    }
+                }
+            }
+        }
+
+        cfn = Simulator(snippet, {})
+        template = cfn.simulate()
+
+        template = TemplateLoader.loads(template)
+        template = template.translate(prefix=PREFIX)
+
+        self.assertEqual(template.to_dict(), target)
 
 if __name__ == '__main__':
     unittest.main()

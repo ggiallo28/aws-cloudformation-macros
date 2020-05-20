@@ -190,7 +190,6 @@ class Git(Template):
         project = self.get_value('Project')
         branch = self.get_value('Branch', default=BRANCH_DEFAULT)
         path = self.get_value('Path', default=TEMPLATE_NAME_DEFAULT)
-
         token = self.get_value('OAuthToken', default='')
 
         gl = gitlab.Gitlab('https://gitlab.com', private_token=token, api_version=4)

@@ -90,10 +90,6 @@ class TemplateLoader(TemplateGenerator):
                     "Fn::Join": ["-", [self.prefix, value["Name"]]]
                 }
 
-            ## Finally we change the logical id for the resource
-            #if key in self.logical_ids:
-            #    key = self.prefix + key
-
             # Recursive call to translate the whole template
             return (key, self._translate(value))
 
