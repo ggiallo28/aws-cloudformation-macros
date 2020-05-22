@@ -6,7 +6,7 @@ import json
 import unittest
 
 from simulator import *
-from utils import *
+from loader import *
 from macro import *
 from cfn_flip import to_json
 from unittest.mock import MagicMock

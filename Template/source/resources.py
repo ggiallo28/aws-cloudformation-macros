@@ -19,7 +19,10 @@ cm = boto3.client('codecommit')
 
 BRANCH_DEFAULT = 'master'
 TEMPLATE_NAME_DEFAULT = 'template.yaml'
-ASSERT_MESSAGE = 'Template format error: {} value in {} is invalid. The value must not depend on any resources or imported values. Check if Parameter exists.'
+
+ASSERT_MESSAGE = """Template format error: {} value in {} is invalid. 
+The value must not depend on any resources or imported values. Check if Parameter exists."""
+
 DEFAULT_BUCKET = os.environ.get(
     'DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
 

@@ -52,14 +52,13 @@ class TemplateLoader(TemplateGenerator):
                 continue
 
             if key == 'description':
-                if value == '':
-                    continue
-                self[key] = "" if self[key] is None else self[key]
-                other[key] = "" if other[key] is None else other[key]
-
-                self[key] = "{} {}".format(self[key], other[key])
+                self[key] = "{} {}".format(
+                    self[key] if self[key] else "", 
+                    other[key] if other[key] else ""
+                )
             else:
                 self[key] = {**self[key], **other[key]}
+
         return self
 
     def _translate(self, data):
@@ -100,6 +99,7 @@ class TemplateLoader(TemplateGenerator):
                 values = data.split(Template.macro_separator)
                 if values[1] != self.prefix and values[1] in self.logical_ids:
                     values.insert(1, self.prefix)
+                    #values[1] = self.prefix+values[1] three level recursion
                     data = Template.macro_separator.join(values)
 
             if data in self.logical_ids:

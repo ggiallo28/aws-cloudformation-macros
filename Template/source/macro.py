@@ -10,7 +10,7 @@ import json
 import logging
 
 from resources import *
-from utils import *
+from loader import *
 from simulator import *
 
 logging.basicConfig(level=logging.INFO)

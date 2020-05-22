@@ -9,16 +9,16 @@ from unittest.mock import MagicMock
 
 from resources import *
 from simulator import *
-from utils import *
+from loader import *
 
 from troposphere import Join
 
-with open('test/utils_resources_1st_test.yaml') as f:
+with open('test/loader_resources_1st_test.yaml') as f:
     content = f.readlines()
 
 import_template_dict = json.loads(to_json(''.join(content)))
 
-with open('test/utils_resources_top_test.yaml') as f:
+with open('test/loader_resources_top_test.yaml') as f:
     content = f.readlines()
 
 main_template_dict = json.loads(to_json(''.join(content)))

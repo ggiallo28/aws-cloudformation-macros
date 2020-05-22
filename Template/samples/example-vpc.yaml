@@ -19,7 +19,7 @@ Parameters:
     Default: single-ec2-bastion/bastion.yaml
   GitLabToken:
     Type: String
-    Default: UzzQB7j2ZkFzexsfeZyJ
+    Default: 
   Environment:
     Type: String
     Default: prod
