@@ -1,11 +1,12 @@
 import re
 import logging
+
+
 logging.basicConfig(level=logging.INFO)
 
 class Simulator():
     __params_regexp = r'\${AWS::[a-zA-Z0-9_]*}|\${[a-zA-Z0-9_]*}'
     __getatt_regexp = r'\${[a-zA-Z0-9_]*\.[a-zA-Z0-9_]*}'
-    __prefix = 'Template::'
 
     def __init__(self, template, params={}):
         import os
@@ -40,23 +41,7 @@ class Simulator():
 
         self.template = self.cleanup(self.template, excude_clean)
 
-        #self.template = self.parse_int(self.template)
-
         return self.template
-
-#    def parse_int(self, data):
-#        if type(data) == dict:
-#            return dict(filter(lambda x: not x is None, map(self.parse_int,
-#                                         data.items())))
-#        if type(data) == list:
-#            return list(filter(lambda x: not x is None, map(self.parse_int, data)))
-#        if type(data) == tuple:
-#            key, value = data
-#            return (key, self.parse_int(value))  
-#        try:
-#            return int(data)
-#        except:
-#            return data
 
     def sub_to_join(self, data):
         if type(data) == dict:

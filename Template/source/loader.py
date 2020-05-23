@@ -1,18 +1,12 @@
-from resources import *
-from troposphere.template_generator import TemplateGenerator
 import boto3
 import os
 import json
 
-DEFAULT_BUCKET = os.environ.get(
-    'DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
-s3 = boto3.client('s3')
-
+from resources import *
+from utils import *
 
 class TemplateLoader(TemplateGenerator):
     __create_key = object()
-    TemplateGenerator.add_version = TemplateGenerator.set_version
-    TemplateGenerator.add_description = TemplateGenerator.set_description
 
     @classmethod
     def loads(cls, json_string):
@@ -61,77 +55,155 @@ class TemplateLoader(TemplateGenerator):
 
         return self
 
-    def _translate(self, data):
-        if data in Template.resources:
+    def is_custom_resource(self, logical_id, import_templates=None):
+        # Check if logical_id is in current template
+        if not import_templates:
+            return self.resources[logical_id].is_macro()
+        else: # Check if logical_id is in imported resources
+            inline_templates = [
+                import_templates[resource][1] 
+                for resource in import_templates
+            ]
+
+            for inline_template in inline_templates:
+                for title in inline_template.resources:
+                    if title == logical_id:
+                        return inline_template.resources[title].is_macro()
+            return False
+
+    ## Used to perform recursive call if there are resource to import
+    def contains_custom_resources(self):
+        return any([
+                res.is_macro()
+                for res in self.resources.values()
+        ])
+
+    def _evaluate_custom_get(self, args):
+        if type(args) == list:
+            if Macro.macro_prefix in args[0]:
+                args[0] = args[0].replace(Macro.macro_prefix, "")
+                return [''.join(args[:-1]).replace(":", ""), args[-1]]
+
+        if type(args) == str:
+            return args.replace(Macro.macro_prefix, "").replace(":", "")
+
+        return args
+
+    def _evaluate_custom_ref(self, args):
+        if type(args) == list:
+            if Macro.macro_prefix in args[0]:
+                args[0] = args[0].replace(Macro.macro_prefix, "")
+                return ''.join(args).replace(":", "")
+        if type(args) == str:
+            if args.startswith(Macro.macro_prefix):
+                return args.replace(Macro.macro_prefix, "").replace(":", "")
+
+        return args
+
+    def _evaluate_custom_expression(self, data):
+        if type(data) == dict and "Fn::GetAtt" in data:
+            evaluated_params = self._evaluate_custom_expression(data["Fn::GetAtt"])
+            data["Fn::GetAtt"] = self._evaluate_custom_get(evaluated_params)
+            return data
+
+        if type(data) == dict and "Ref" in data:
+            evaluated_params = self._evaluate_custom_expression(data["Ref"])
+            data["Ref"] = self._evaluate_custom_ref(evaluated_params)
+            return data
+
+        if type(data) == list:
+            return [self._evaluate_custom_expression(d) for d in data]
+
+        if type(data) == dict:
+            return {
+                key: self._evaluate_custom_expression(data[key])
+                for key in data
+            }
+
+        return data
+
+    def evaluate_custom_expression(self):
+        ##TODO self.loads()
+        return self._evaluate_custom_expression(self.to_dict())
+
+    def _get_template_logical_ids(self):
+        logical_ids = []
+        for prop, value in self:
+            if type(value) == dict:
+                logical_ids += list(value.keys())
+        return logical_ids
+
+    def _translate_custom_reference(self, data):
+        if data.startswith(Macro.macro_prefix):
+            values = data.split(Macro.macro_separator)
+            if values[1] != self.prefix and values[1] in self.logical_ids:
+                values.insert(1, self.prefix)
+                #values[1] = self.prefix+values[1] three level recursion
+                data = Macro.macro_separator.join(values)
+
+        if data in self.logical_ids:
+            data = self.prefix + data
+
+        return data
+
+    def _translate_template(self, data):
+        if data in Macro.resources:
             return data
 
         if type(data) == dict:
-            return dict(map(self._translate, data.items()))
+            return dict(map(self._translate_template, data.items()))
 
         if type(data) == list:
-            return list(map(self._translate, data))
+            return list(map(self._translate_template, data))
 
         if type(data) == tuple:
             key, value = data
-            # Change the name of the reference
             if key == 'Ref':
                 if value in self.logical_ids:
                     value = self.prefix + value
 
-            # Change the logical id reference in GetAtt
             if key == "Fn::GetAtt":
                 if value[0] in self.logical_ids:
                     value[0] = self.prefix + value[0]
 
-            # Export name is changed with a prefix
-            if key == "Export":
+            if key == "Export" and 'Name' in value:
                 value["Name"] = {
                     "Fn::Join": ["-", [self.prefix, value["Name"]]]
                 }
 
-            # Recursive call to translate the whole template
-            return (key, self._translate(value))
+            return (key, self._translate_template(value))
 
-        # Update all custom references
-        ### and values[1] in self.logical_ids: definire test case
         if type(data) == str:
-            if data.startswith(Template.macro_prefix):
-                values = data.split(Template.macro_separator)
-                if values[1] != self.prefix and values[1] in self.logical_ids:
-                    values.insert(1, self.prefix)
-                    #values[1] = self.prefix+values[1] three level recursion
-                    data = Template.macro_separator.join(values)
-
-            if data in self.logical_ids:
-                data = self.prefix + data
+            data = self._translate_custom_reference(data)
 
         return data
+
+    def _translate_logical_ids(self, prefix):
+        for prop, value in self:
+            if type(value) == dict:
+                self[prop] = {(prefix + lid):value[lid]for lid in value.keys()}
 
     # To avoid conflicts during inline import the logical id for each resource is changed.
     # This function adds a prefix to all resources name.
     def translate(self, prefix):
         self.prefix = prefix
-        self.logical_ids = []
-        for prop, value in self:
-            if type(value) == dict:
-                # Get all resources logica ids
-                self.logical_ids += list(value.keys())
-                self[prop] = {(prefix + lid):value[lid]for lid in value.keys()}
+        self.logical_ids = self._get_template_logical_ids()
+        self._translate_logical_ids(prefix)
 
-        json_string = self._translate(self.to_dict())
+        json_string = self._translate_template(self.to_dict())
         return self.loads(json_string)
 
 
     # Given the logica resource id, this function return all the resources in a template
     # if inline mode is active otherwise it return the logical id of the nested stack.
-    def _get_logical_ids(self, logical_id, import_templates):
+    def _get_macro_logical_ids(self, logical_id, import_templates):
         logical_ids = []
-        logical_id = logical_id.replace(Template.macro_prefix, "")
+        logical_id = logical_id.replace(Macro.macro_prefix, "")
         if logical_id in import_templates: # find the logical_id inside import_templates
             _, related_inline_template = import_templates[logical_id]
             for resource in related_inline_template.resources:
                 if self.is_custom_resource(resource, import_templates):
-                    logical_ids.append(Template.macro_prefix + resource)
+                    logical_ids.append(Macro.macro_prefix + resource)
                 else:
                     logical_ids.append(resource)
             return logical_ids
@@ -161,12 +233,12 @@ class TemplateLoader(TemplateGenerator):
 
             depends_on_template = []
             for attribute in top_resource_depends_on:
-                if Template.macro_prefix in attribute:
-                    depends_on_template += self._get_logical_ids(attribute, import_templates)
+                if Macro.macro_prefix in attribute:
+                    depends_on_template += self._get_macro_logical_ids(attribute, import_templates)
 
             depends_on_aws = [
                 attribute for attribute in top_resource_depends_on
-                if not Template.macro_prefix in attribute
+                if not Macro.macro_prefix in attribute
             ]
 
             ## Append or set DependsOn value.
@@ -185,14 +257,14 @@ class TemplateLoader(TemplateGenerator):
                 depends_on = getattr(self.resources[title], 'DependsOn')
 
                 depends_on_template = [
-                    d for d in depends_on if Template.macro_prefix in d
+                    d for d in depends_on if Macro.macro_prefix in d
                 ]
                 depends_on_aws = [
-                    d for d in depends_on if Template.macro_prefix not in d
+                    d for d in depends_on if Macro.macro_prefix not in d
                 ]
 
                 for depends_on_value in depends_on_template:
-                    key = depends_on_value.replace(Template.macro_prefix, "")
+                    key = depends_on_value.replace(Macro.macro_prefix, "")
                     top_level_resource, inline_template = import_templates.get(
                         key,  # Check if dependson resource is in imported templates
                         (
@@ -202,89 +274,20 @@ class TemplateLoader(TemplateGenerator):
 
                     if top_level_resource and inline_template == self:  # Current Template Resource, Depends on Nested Stack or AWS Resource
                         if self.is_custom_resource(key):
-                            key = Template.macro_prefix + key
+                            key = Macro.macro_prefix + key
                         depends_on_aws.append(key)
 
                     elif top_level_resource and inline_template != self:  # Imported Resource, Depends on Inline Stack / Multiple Resources
                         values = list(inline_template.resources.keys())
                         for index, key in enumerate(values):
                             if self.is_custom_resource(key, import_templates):
-                                values[index] = Template.macro_prefix + key
+                                values[index] = Macro.macro_prefix + key
                         depends_on_aws += values
 
                 depends_on_aws = list(
                     set(depends_on_aws))  # Remove duplicates and set value
                 setattr(self.resources[title], 'DependsOn', depends_on_aws)
 
-    def is_custom_resource(self, logical_id, import_templates=None):
-        # Check if logical_id is in current template
-        if not import_templates:
-            return self.resources[logical_id].is_macro()
-        else: # Check if logical_id is in imported resources
-            inline_templates = [
-                import_templates[resource][1] 
-                for resource in import_templates
-            ]
 
-            for inline_template in inline_templates:
-                for title in inline_template.resources:
-                    if title == logical_id:
-                        return inline_template.resources[title].is_macro()
-            return False
 
-    ## Used to perform recursive call if there are resource to import
-    def contains_custom_resources(self):
-        if any([
-                res.is_macro()
-                for res in self.resources.values()
-        ]):
-            return True
-        else:
-            return False
 
-    def _get(self, args):
-        if type(args) == list:
-            if Template.macro_prefix in args[0]:
-                args[0] = args[0].replace(Template.macro_prefix, "")
-                return [''.join(args[:-1]).replace(":", ""), args[-1]]
-
-        if type(args) == str:
-            return args.replace(Template.macro_prefix, "").replace(":", "")
-
-        return args
-
-    def _ref(self, args):
-        if type(args) == list:
-            if Template.macro_prefix in args[0]:
-                args[0] = args[0].replace(Template.macro_prefix, "")
-                return ''.join(args).replace(":", "")
-        if type(args) == str:
-            if args.startswith(Template.macro_prefix):
-                return args.replace(Template.macro_prefix, "").replace(":", "")
-
-        return args
-
-    def evaluate_custom_expression(self):
-        return self._evaluate_custom_expression(self.to_dict())
-
-    def _evaluate_custom_expression(self, data):
-        if type(data) == dict and "Fn::GetAtt" in data:
-            evaluated_params = self._evaluate_custom_expression(data["Fn::GetAtt"])
-            data["Fn::GetAtt"] = self._get(evaluated_params)
-            return data
-
-        if type(data) == dict and "Ref" in data:
-            evaluated_params = self._evaluate_custom_expression(data["Ref"])
-            data["Ref"] = self._ref(evaluated_params)
-            return data
-
-        if type(data) == list:
-            return [self._evaluate_custom_expression(d) for d in data]
-
-        if type(data) == dict:
-            return {
-                key: self._evaluate_custom_expression(data[key])
-                for key in data
-            }
-
-        return data

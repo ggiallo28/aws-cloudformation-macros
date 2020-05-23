@@ -2,58 +2,44 @@ import sys, os, json, io
 
 sys.path.insert(1, 'libs')
 sys.path.insert(1, 'source/libs')
-from troposphere.validators import boolean, integer
-from troposphere import AWSObject
-from troposphere import Tags, Ref, Join
-from troposphere import cloudformation
-from cfn_flip import to_json
+
 import logging
 import boto3
 import git
 import gitlab
 
+from cfn_flip import to_json
 from simulator import *
+from utils import *
 
 s3 = boto3.client('s3')
 cm = boto3.client('codecommit')
-
-BRANCH_DEFAULT = 'master'
-TEMPLATE_NAME_DEFAULT = 'template.yaml'
-
-ASSERT_MESSAGE = """Template format error: {} value in {} is invalid. 
-The value must not depend on any resources or imported values. Check if Parameter exists."""
-
-DEFAULT_BUCKET = os.environ.get(
-    'DEFAULT_BUCKET', 'macro-template-default-831650818513-us-east-1')
 
 try:
     basestring
 except NameError:
     basestring = str
 
-AWSObject.is_macro = lambda x: False
-Ref.extract = lambda x: x.data['Ref']
-
-class Template(AWSObject): 
+class Macro(AWSObject): 
     global aws_cfn_request_id
     global template_params
     global aws_region
 
-    is_macro = lambda x: True
-
-    macro_name = 'Template'
-    macro_separator = '::'
-    macro_prefix = macro_name + macro_separator
+    macro_name = MACRO_NAME
+    macro_separator = MACRO_SEPARATOR
+    macro_prefix = MACRO_PREFIX
 
     resources = []
+    json_template = {}
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.resources.append(cls.resource_type)
 
     def get_value(self, key, default=None):
         value = self.properties.get(key)
-        if hasattr(value, 'Ref'):
-            value = self.template_params[value['Ref']]
+        if type(value) == Ref:
+            value = self.template_params[value.extract()]
         return default if value in [None, ""] else value
 
     def get_template(self):
@@ -112,8 +98,11 @@ class Template(AWSObject):
     def get_aws_region(self):
         return self.aws_region
 
-class Git(Template):
-    resource_type = Template.macro_prefix + 'Git'
+    def is_macro(self):
+        return True
+
+class Git(Macro):
+    resource_type = Macro.macro_prefix + 'Git'
 
     props = {
         'Mode': (basestring, True),
@@ -216,8 +205,8 @@ class Git(Template):
         if provider.lower() == 'gitlab':
             return self._gitlab_import()
 
-class S3(Template):
-    resource_type = Template.macro_prefix + 'S3'
+class S3(Macro):
+    resource_type = Macro.macro_prefix + 'S3'
 
     props = {
         'Mode': (basestring, True),

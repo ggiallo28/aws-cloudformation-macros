@@ -1,13 +1,12 @@
-import sys, os, io, traceback
+import sys
 
 sys.path.insert(1, 'libs')
 sys.path.insert(1, 'source/libs')
-from cfn_flip import flip, to_json
 
-import json
-import boto3
+import os
 import json
 import logging
+import traceback
 
 from resources import *
 from loader import *
@@ -89,12 +88,13 @@ def handler(event, context):
         'requestId': request_id
     }
 
-    Template.aws_cfn_request_id = request_id
-    Template.template_params = parameters
-    Template.aws_region = event['region']
+    Macro.aws_cfn_request_id = request_id
+    Macro.template_params = parameters
+    Macro.aws_region = event['region']
 
     try:
         template = handle_template(template)
+        print(template.get_logical_ids())
         macro_response['fragment'] = template.evaluate_custom_expression()
 
         logging.debug("Output:", json.dumps(event))

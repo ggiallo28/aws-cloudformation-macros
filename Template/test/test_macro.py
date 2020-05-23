@@ -41,9 +41,9 @@ logging.basicConfig(level=logging.INFO)
 class TestUtilsMethods(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        Template.aws_cfn_request_id = 'mock-test'
-        Template.template_params = {}
-        Template.aws_region = 'eu-west-1'
+        Macro.aws_cfn_request_id = 'mock-test'
+        Macro.template_params = {}
+        Macro.aws_region = 'eu-west-1'
         cls.bucket_name = 'mock-bucket-name'
         cls.object_key = 'mock-object-key'
 
@@ -61,8 +61,8 @@ class TestUtilsMethods(unittest.TestCase):
             else:
                 return fir_template
 
-        Template.get_template = mock_get_template
-        Template.s3_export = MagicMock(
+        Macro.get_template = mock_get_template
+        Macro.s3_export = MagicMock(
             return_value=Join('', [
                 'https://', cls.bucket_name, '.s3.amazonaws.com/',
                 cls.object_key
@@ -116,7 +116,7 @@ class TestUtilsMethods(unittest.TestCase):
         for key in self.template.outputs:
             export = self.template.outputs[key].resource.get('Export')
             if export:
-                self.assertFalse(Template.macro_prefix in json.dumps(export.data['Name']))
+                self.assertFalse(Macro.macro_prefix in json.dumps(export.data['Name']))
 
     def test_depends_on(self):
         self.assertEqual(
@@ -131,7 +131,7 @@ class TestUtilsMethods(unittest.TestCase):
 
     def test_custom_expression_no_macro_name(self):
         template = self.template.evaluate_custom_expression()
-        self.assertFalse(Template.macro_prefix in template)
+        self.assertFalse(Macro.macro_prefix in template)
 
 if __name__ == '__main__':
     unittest.main()

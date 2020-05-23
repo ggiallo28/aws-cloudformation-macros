@@ -38,9 +38,9 @@ main_template_dict_params = {
 class TestUtilsMethods(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        Template.aws_cfn_request_id = 'test_get_stack_template'
-        Template.template_params = {}
-        Template.aws_region = 'us-west-1'
+        Macro.aws_cfn_request_id = 'test_get_stack_template'
+        Macro.template_params = {}
+        Macro.aws_region = 'us-west-1'
 
         bucket_name = 'mock-bucket-name'
         object_key = 'mock-object-key'
@@ -49,10 +49,10 @@ class TestUtilsMethods(unittest.TestCase):
                                     import_template_dict_params)
         import_template = import_template.simulate()
 
-        Template._codecommit_import = MagicMock(return_value=import_template)
-        Template._github_import = MagicMock(return_value=import_template)
-        Template._s3_import = MagicMock(return_value=import_template)
-        Template._s3_export = MagicMock(return_value=Join(
+        Macro._codecommit_import = MagicMock(return_value=import_template)
+        Macro._github_import = MagicMock(return_value=import_template)
+        Macro._s3_import = MagicMock(return_value=import_template)
+        Macro._s3_export = MagicMock(return_value=Join(
             '', ['https://', bucket_name, '.s3.amazonaws.com/', object_key]))
 
         main_template = Simulator(main_template_dict,

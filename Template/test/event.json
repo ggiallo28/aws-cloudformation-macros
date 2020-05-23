@@ -24,7 +24,7 @@
         },
         "OAuthToken": {
             "Type": "String",
-            "Default": "YsfRzFo-Fa5HxhhCui_-"
+            "Default": "R5bCf3iWq4Z8HY5DRsMP"
         },
         "Environment": {
             "Type": "String",
