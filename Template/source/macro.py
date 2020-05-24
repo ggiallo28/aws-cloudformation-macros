@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 def handle_template(main_template):
     merge_template = TemplateLoader.init(main_template.parameters)
 
-    import_templates = {}
+    template_collection = TemplateLoaderCollection()
 
     for resource_id, resource_obj in main_template.resources.items():
         if not resource_obj.is_macro():
@@ -42,19 +42,15 @@ def handle_template(main_template):
 
                 import_template = import_template.translate(prefix=resource_id)
 
-                import_templates.update({
-                        resource_id: (resource_obj, import_template)
+                template_collection.update({
+                    resource_id : (resource_obj, import_template)
                 })
 
                 logging.info('Add Template Resource {}, Mode={}'.format(resource_id, mode))
 
-    merge_template.resolve_attrs(import_templates)
+    merge_template.add_templates(template_collection)
 
-    for _,(top_level_resource, inline_template) in import_templates.items():
-        inline_template.set_attrs(top_level_resource, import_templates)
-        merge_template += inline_template
-
-    if merge_template.contains_custom_resources():
+    if merge_template.is_template_contains_custom_resources():
         logging.info('Recursive Call.')
         return handle_template(merge_template)
 
@@ -94,8 +90,10 @@ def handler(event, context):
 
     try:
         template = handle_template(template)
-        print(template.get_logical_ids())
-        macro_response['fragment'] = template.evaluate_custom_expression()
+
+        template = template.evaluate_custom_expression()
+
+        macro_response['fragment'] = template.to_dict()
 
         logging.debug("Output:", json.dumps(event))
     except Exception as e:

@@ -34,7 +34,9 @@ def extract(x):
 setattr(AWSHelperFn, 'extract', extract)
 
 class TemplateLoaderCollection():
-	templates = {}
+
+	def __init__(self):
+		self.templates = {}
 
 	def __getitem__(self, key):
 		return self.templates[key]
@@ -43,9 +45,8 @@ class TemplateLoaderCollection():
 		self.templates[key] = value
 
 	def __iter__(self):
-		fields = list(vars(self).keys())
-		for props in fields:
-			yield (props, getattr(self, props))
+		for key in self.templates:
+			yield (key, *self.templates[key])
 
 	def update(self, data):
 		self.templates.update(data)
@@ -61,17 +62,6 @@ class TemplateLoaderCollection():
 
 	def to_dict(self):
 		return self.templates
-
-	def is_custom_resource(self, logical_id):
-		inline_templates = [
-		    self.templates[resource][1] 
-		    for resource in self.templates
-		]
-		for inline_template in inline_templates:
-		    for title in inline_template.resources:
-		        if title == logical_id:
-		            return inline_template.resources[title].is_macro()
-		return False
 
 #def prefix_prp(self, template):
 #	self.resource = template._prefix_functions(self.resource)

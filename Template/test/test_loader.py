@@ -12,6 +12,8 @@ logging.basicConfig(level=logging.INFO)
 from simulator import *
 from loader import *
 from troposphere import Join
+from troposphere import cloudformation
+from unittest.mock import MagicMock
 
 with open('test/loader_resources_1st_test.yaml') as f:
     content = f.readlines()
@@ -36,12 +38,6 @@ main_template_dict_params = {
     "RepositoryName": "aws-cloudformation-macros",
     "BranchName": "master"
 }
-
-def mock_s3_export(request_id, bucket_name, object_key, troposphere_template, template_params):
-    bucket_name = 'mock-bucket-name'
-    object_key = 'mock-object-key'
-
-    return Join('',['https://', bucket_name, '.s3.amazonaws.com/', object_key])
 
 class TestUtilsMethods(unittest.TestCase):
 
@@ -203,6 +199,9 @@ class TestUtilsMethods(unittest.TestCase):
 
         template = template.evaluate_custom_expression()
 
+        template = template.to_dict()
+
+
         self.assertEqual(
             template['Outputs'][PREFIX+'InternetGatewayId']['Export']['Name']['Fn::Join'][1][1]['Fn::Join'][1][0]['Ref'], 
             'AWS::StackName'
@@ -259,12 +258,30 @@ class TestAttrsMethods(unittest.TestCase):
             'Nested2InlineTarget' : (cls.main_template.resources['Nested2InlineTarget'], cls.Nested2InlineTarget)
         }
 
+        cls.template_collection = TemplateLoaderCollection()
+        cls.template_collection.update(cls.import_templates)
+
+        cls.bucket_name = "mock"
+        cls.object_key = "test"
+        Macro._s3_export = MagicMock(
+            return_value=Join('', [
+                'https://', cls.bucket_name, '.s3.amazonaws.com/',
+                cls.object_key
+            ]))
+
     def test_set_attrs_inline_dependson_nested(self):
         # Inline DependsOn Nested
+        dependson_resource_id = 'SNSTopicNested'
         top_level_resource_id = 'SNSTopicS3'
-        top_level_resource, inline_template = self.import_templates[top_level_resource_id]
-        inline_template.set_attrs(top_level_resource, self.import_templates)
-        inline_template_json = json.loads(inline_template.to_json())
+
+        merge_template = TemplateLoader.init(self.main_template.parameters)
+
+        nested_stack = self.main_template.resources[dependson_resource_id].get_stack_template()
+        merge_template.add_resource(nested_stack)
+
+        merge_template.add_templates(self.template_collection)
+
+        inline_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
             inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn'], 
@@ -303,9 +320,12 @@ class TestAttrsMethods(unittest.TestCase):
         # Inline DependsOn Inline & Inline DependsOn AWS
         top_level_resource_id = 'DoubleSNSTopicS3'
         dependson_resource_id = 'SNSTopicS3'
-        top_level_resource, inline_template = self.import_templates[top_level_resource_id]
-        inline_template.set_attrs(top_level_resource, self.import_templates)
-        inline_template_json = json.loads(inline_template.to_json())
+
+        merge_template = TemplateLoader.init(self.main_template.parameters)
+
+        merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
+        merge_template.add_templates(self.template_collection)
+        inline_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
             sorted(inline_template_json['Resources'][top_level_resource_id + 'UrgentPriorityAlarm']['DependsOn']), 
@@ -397,10 +417,9 @@ class TestAttrsMethods(unittest.TestCase):
         # Nested DependsOn Inline
         dependson_resource_id = 'Nested2InlineTarget'
         merge_template = TemplateLoader.init(self.main_template.parameters)
-
         merge_template.add_resource(self.main_template.resources['Nested2InlineSource'])
-
-        merge_template.resolve_attrs(self.import_templates)
+        merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
+        merge_template.add_templates(self.template_collection)
         merge_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
@@ -418,12 +437,15 @@ class TestAttrsMethods(unittest.TestCase):
 
     def test_resolve_attrs_nested_dependson_nested(self):
         # Nested DependsOn Nested
+        dependson_resource_id = 'Nested2NestedTarget'
+
         merge_template = TemplateLoader.init(self.main_template.parameters)
 
-        merge_template.add_resource(self.main_template.resources['Nested2NestedTarget'])
+        merge_template.add_resource(self.main_template.resources[dependson_resource_id])
         merge_template.add_resource(self.main_template.resources['Nested2NestedSource'])
+        merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
 
-        merge_template.resolve_attrs(self.import_templates)
+        merge_template.add_templates(self.template_collection)
         merge_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
@@ -437,7 +459,9 @@ class TestAttrsMethods(unittest.TestCase):
         merge_template = TemplateLoader.init(self.main_template.parameters)
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarm'])
-        merge_template.resolve_attrs(self.import_templates)
+        merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
+
+        merge_template.add_templates(self.template_collection)
         merge_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
@@ -460,7 +484,7 @@ class TestAttrsMethods(unittest.TestCase):
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarmDependsOnNested'])
         merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
-        merge_template.resolve_attrs(self.import_templates)
+        merge_template.add_templates(self.template_collection)
         merge_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
@@ -475,7 +499,9 @@ class TestAttrsMethods(unittest.TestCase):
 
         merge_template.add_resource(self.main_template.resources['HighPriorityAlarm'])
         merge_template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
-        merge_template.resolve_attrs(self.import_templates)
+        merge_template.add_resource(self.main_template.resources['SNSTopicNested'])
+
+        merge_template.add_templates(self.template_collection)
         merge_template_json = json.loads(merge_template.to_json())
 
         self.assertEqual(
@@ -486,9 +512,9 @@ class TestAttrsMethods(unittest.TestCase):
     def test_is_custom(self):
         template = TemplateLoader.init({})      
         template.add_resource(self.main_template.resources['HighPriorityAlarm'])
-        self.assertFalse(template.contains_custom_resources())
+        self.assertFalse(template.is_template_contains_custom_resources())
         template.add_resource(self.main_template.resources['SNSTopicNestedDefault'])
-        self.assertTrue(template.contains_custom_resources())
+        self.assertTrue(template.is_template_contains_custom_resources())
 
 
     def test_evaluate_custom_expression(self):

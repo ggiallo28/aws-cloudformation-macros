@@ -101,6 +101,11 @@ class Macro(AWSObject):
     def is_macro(self):
         return True
 
+    @staticmethod
+    def to_logical_id(value):
+        return value.replace(Macro.macro_prefix, "").replace(Macro.macro_separator, "")
+
+
 class Git(Macro):
     resource_type = Macro.macro_prefix + 'Git'
 

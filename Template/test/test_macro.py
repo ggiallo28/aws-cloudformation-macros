@@ -62,7 +62,7 @@ class TestUtilsMethods(unittest.TestCase):
                 return fir_template
 
         Macro.get_template = mock_get_template
-        Macro.s3_export = MagicMock(
+        Macro._s3_export = MagicMock(
             return_value=Join('', [
                 'https://', cls.bucket_name, '.s3.amazonaws.com/',
                 cls.object_key

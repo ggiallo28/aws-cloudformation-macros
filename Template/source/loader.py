@@ -55,24 +55,7 @@ class TemplateLoader(TemplateGenerator):
 
         return self
 
-    def is_custom_resource(self, logical_id, import_templates=None):
-        # Check if logical_id is in current template
-        if not import_templates:
-            return self.resources[logical_id].is_macro()
-        else: # Check if logical_id is in imported resources
-            inline_templates = [
-                import_templates[resource][1] 
-                for resource in import_templates
-            ]
-
-            for inline_template in inline_templates:
-                for title in inline_template.resources:
-                    if title == logical_id:
-                        return inline_template.resources[title].is_macro()
-            return False
-
-    ## Used to perform recursive call if there are resource to import
-    def contains_custom_resources(self):
+    def is_template_contains_custom_resources(self):
         return any([
                 res.is_macro()
                 for res in self.resources.values()
@@ -123,8 +106,11 @@ class TemplateLoader(TemplateGenerator):
         return data
 
     def evaluate_custom_expression(self):
-        ##TODO self.loads()
-        return self._evaluate_custom_expression(self.to_dict())
+        return self.loads(
+            self._evaluate_custom_expression(
+                self.to_dict()
+            )
+        )
 
     def _get_template_logical_ids(self):
         logical_ids = []
@@ -138,7 +124,6 @@ class TemplateLoader(TemplateGenerator):
             values = data.split(Macro.macro_separator)
             if values[1] != self.prefix and values[1] in self.logical_ids:
                 values.insert(1, self.prefix)
-                #values[1] = self.prefix+values[1] three level recursion
                 data = Macro.macro_separator.join(values)
 
         if data in self.logical_ids:
@@ -183,8 +168,6 @@ class TemplateLoader(TemplateGenerator):
             if type(value) == dict:
                 self[prop] = {(prefix + lid):value[lid]for lid in value.keys()}
 
-    # To avoid conflicts during inline import the logical id for each resource is changed.
-    # This function adds a prefix to all resources name.
     def translate(self, prefix):
         self.prefix = prefix
         self.logical_ids = self._get_template_logical_ids()
@@ -193,101 +176,80 @@ class TemplateLoader(TemplateGenerator):
         json_string = self._translate_template(self.to_dict())
         return self.loads(json_string)
 
-
-    # Given the logica resource id, this function return all the resources in a template
-    # if inline mode is active otherwise it return the logical id of the nested stack.
-    def _get_macro_logical_ids(self, logical_id, import_templates):
-        logical_ids = []
-        logical_id = logical_id.replace(Macro.macro_prefix, "")
-        if logical_id in import_templates: # find the logical_id inside import_templates
-            _, related_inline_template = import_templates[logical_id]
-            for resource in related_inline_template.resources:
-                if self.is_custom_resource(resource, import_templates):
-                    logical_ids.append(Macro.macro_prefix + resource)
-                else:
-                    logical_ids.append(resource)
-            return logical_ids
-        else:
-            return [logical_id]  # Is Nested Resource
-
-    ## Set attributes for inline resources
-    def set_attrs(self, top_level_resource, import_templates):
-
-        if hasattr(top_level_resource, 'DeletionPolicy'):
-            ## Override the value of DeletionPolicy, propagate the value that comes from main template.
-            value = getattr(top_level_resource, 'DeletionPolicy')
+    def _set_deletion_policy(self, macro_resource):
+        if hasattr(macro_resource, 'DeletionPolicy'):
+            value = getattr(macro_resource, 'DeletionPolicy')
             for title in self.resources:
                 setattr(self.resources[title], 'DeletionPolicy', value)
 
-        if hasattr(top_level_resource, 'UpdateReplacePolicy'):
-            ## Override the value of UpdateReplacePolicy, propagate the value that comes from main template.
-            value = getattr(top_level_resource, 'UpdateReplacePolicy')
+    def _set_update_replace_policy(self, macro_resource):
+        if hasattr(macro_resource, 'UpdateReplacePolicy'):
+            value = getattr(macro_resource, 'UpdateReplacePolicy')
             for title in self.resources:
                 setattr(self.resources[title], 'UpdateReplacePolicy', value)
 
-        if hasattr(top_level_resource, 'DependsOn'):
-            ## Append DependsOn attributes, add the attributes from main template to all resource in the imported template.
-            ## It resolve depends on relation. Worst case is when inline macro resource dependson an other inline
-            ## macro resource, in this case we have N:N relation.
-            top_resource_depends_on = getattr(top_level_resource, 'DependsOn')
-
-            depends_on_template = []
-            for attribute in top_resource_depends_on:
-                if Macro.macro_prefix in attribute:
-                    depends_on_template += self._get_macro_logical_ids(attribute, import_templates)
-
-            depends_on_aws = [
-                attribute for attribute in top_resource_depends_on
-                if not Macro.macro_prefix in attribute
-            ]
-
-            ## Append or set DependsOn value.
-            ## Iterate over all resources inside current imported template.
+    def _set_depends_on(self, macro_resource):
+        if hasattr(macro_resource, 'DependsOn'):
             for title in self.resources:
+                value = list(getattr(macro_resource, 'DependsOn'))
                 if hasattr(self.resources[title], 'DependsOn'):
-                    resource_depends_on = getattr(self.resources[title],'DependsOn')
-                    setattr(self.resources[title], 'DependsOn', depends_on_aws + depends_on_template + resource_depends_on)
-                else:
-                    setattr(self.resources[title], 'DependsOn', depends_on_aws + depends_on_template)
+                    value += getattr(self.resources[title], 'DependsOn')
+                setattr(self.resources[title], 'DependsOn', value)
 
-    ## Set attributes for nested resources or AWS resource
-    def resolve_attrs(self, import_templates):
+    def _translate_depends_on(self, template_collection):
         for title in self.resources:
-            if hasattr(self.resources[title], 'DependsOn'):
-                depends_on = getattr(self.resources[title], 'DependsOn')
+            current_resource = self.resources[title]
 
-                depends_on_template = [
-                    d for d in depends_on if Macro.macro_prefix in d
+            if hasattr(current_resource, 'DependsOn'):
+                depends_on = getattr(current_resource, 'DependsOn')
+
+                depends_on_macro = [
+                    d for d in depends_on 
+                    if Macro.macro_prefix in d
                 ]
+
                 depends_on_aws = [
-                    d for d in depends_on if Macro.macro_prefix not in d
+                    d for d in depends_on 
+                    if Macro.macro_prefix not in d
                 ]
 
-                for depends_on_value in depends_on_template:
-                    key = depends_on_value.replace(Macro.macro_prefix, "")
-                    top_level_resource, inline_template = import_templates.get(
-                        key,  # Check if dependson resource is in imported templates
-                        (
-                            self.resources.get(key, None), self
-                        )  # Check if depends on resource is in Current Template (this object)
-                    )
+                for depends_on_value in depends_on_macro:
+                    logical_id = Macro.to_logical_id(depends_on_value)
 
-                    if top_level_resource and inline_template == self:  # Current Template Resource, Depends on Nested Stack or AWS Resource
-                        if self.is_custom_resource(key):
-                            key = Macro.macro_prefix + key
-                        depends_on_aws.append(key)
+                    if template_collection.contains(logical_id):
+                        macro_resource, external_template = template_collection.get(logical_id)
+                        for external_title in external_template.resources:
+                            external_resource = external_template.resources[external_title]
+                            if external_resource.is_macro():
+                                depends_on_aws += [Macro.macro_prefix + external_title]
+                            else:
+                                depends_on_aws += [external_title]
+                    else:
+                        local_resource = self.resources.get(logical_id)
+                        if not local_resource:
+                            print(logical_id)
+                        if local_resource.is_macro():
+                            depends_on_aws += [depends_on_value]
+                        else:
+                            depends_on_aws.append(logical_id)
 
-                    elif top_level_resource and inline_template != self:  # Imported Resource, Depends on Inline Stack / Multiple Resources
-                        values = list(inline_template.resources.keys())
-                        for index, key in enumerate(values):
-                            if self.is_custom_resource(key, import_templates):
-                                values[index] = Macro.macro_prefix + key
-                        depends_on_aws += values
 
-                depends_on_aws = list(
-                    set(depends_on_aws))  # Remove duplicates and set value
+                depends_on_aws = list(set(depends_on_aws))
                 setattr(self.resources[title], 'DependsOn', depends_on_aws)
 
+    def add_templates(self, template_collection):
+
+        for logical_id, macro_resource, external_template in template_collection:
+
+            external_template._set_deletion_policy(macro_resource)
+
+            external_template._set_update_replace_policy(macro_resource)
+
+            external_template._set_depends_on(macro_resource)
+
+            self += external_template
+
+        self._translate_depends_on(template_collection)
 
 
 
