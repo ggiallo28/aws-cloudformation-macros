@@ -114,9 +114,9 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If Nested mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
+If Nested mode is used Macro automatically uploads Template into S3 Bucket when TemplateBucket, TemplateKey or Path parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
 
-If Inline mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the `Template::` prefix. 
+If Inline mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the _Template::_ prefix. 
 
 For example, you can obtain the Arn of a resource inside imported template using GetAtt, you can reference resource inside imported template using Ref:
 
@@ -134,7 +134,7 @@ _Required_: Yes
 
 _Type_: String
 
-_Allowed Values_:  `Inline | Nested`
+_Allowed Values_:  Inline | Nested
 
 
 `Provider`
@@ -264,7 +264,7 @@ _Required_: No
 
 _Type_: String
 
-_Default_: Path field
+_Default_: same value as Path field
 
 
 ## Template::S3
@@ -319,7 +319,7 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If Nested mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
+If Nested mode is used Macro automatically uploads Template into S3 Bucket when TemplateBucket, TemplateKey or Path parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
 
 If Inline mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the _Template::_ prefix. 
 
