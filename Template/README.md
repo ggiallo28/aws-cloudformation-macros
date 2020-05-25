@@ -13,7 +13,13 @@ This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
 1. You will need an S3 bucket to store the CloudFormation artifacts:
     * If you don't have one already, create one with `aws s3 mb s3://<bucket name>`
 
-2. Package the CloudFormation template. The provided template uses [the AWS Serverless Application Model](https://aws.amazon.com/about-aws/whats-new/2016/11/introducing-the-aws-serverless-application-model/) so must be transformed before you can deploy it.
+2. Install all python requirements
+
+    ```shell
+    pip install -r source/requirements.txt -t source
+    ```
+
+3. Package the CloudFormation template. The provided template uses [the AWS Serverless Application Model](https://aws.amazon.com/about-aws/whats-new/2016/11/introducing-the-aws-serverless-application-model/) so must be transformed before you can deploy it.
 
     ```shell
     aws cloudformation package \
@@ -22,19 +28,13 @@ This Macro uses [Troposphere](https://github.com/cloudtools/troposphere).
         --output-template-file template.output
     ```
 
-3. Deploy the packaged CloudFormation template to a CloudFormation stack:
+4. Deploy the packaged CloudFormation template to a CloudFormation stack:
 
     ```shell
     aws cloudformation deploy \
         --stack-name template-macro \
         --template-file template.output \
         --capabilities CAPABILITY_IAM
-    ```
-
-4. Install all python requirements
-
-    ```shell
-    pip install -r source/requirements.txt -t source
     ```
 
 5. To test out the macro's capabilities, try launching the provided example template:
@@ -70,6 +70,7 @@ To declare this entity in your AWS CloudFormation template use the following syn
   	  "Mode": String,
   	  "Provider": String,
   	  "Repo": String,
+      "Project" : String,
   	  "Branch": String,
   	  "Owner": String,
   	  "OAuthToken": String,
@@ -91,6 +92,7 @@ Properties:
   Mode: String
   Provider: String
   Repo: String
+  Project: String
   Branch: String
   Owner: String
   OAuthToken: String
@@ -112,23 +114,21 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If `Nested` mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
+If Nested mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
 
-If `Inline` mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the `Template::` prefix. 
+If Inline mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the `Template::` prefix. 
 
-For example, you can obtain the Arn of a resource inside imported template using:
+For example, you can obtain the Arn of a resource inside imported template using GetAtt, you can reference resource inside imported template using Ref:
 
-```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
+- ```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
 
-you can reference resource inside imported template using:
-
-```Ref: Template::TemplateName::LogicalName```
+- ```Ref: Template::TemplateName::LogicalName```
 
 Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
 
-You can define dependency to Template resource using Template:: prefix.
+You can define dependency to Template resource using _Template::_ prefix.
 
-```DependsOn: Template::TemplateName```
+- ```DependsOn: Template::TemplateName```
 
 _Required_: Yes
 
@@ -145,7 +145,7 @@ _Required_: Yes
 
 _Type_: String
 
-_Allowed Values_:  `Codecommit | GitHub`
+_Allowed Values_:  Codecommit | GitHub | Gitlab
 
 `Repo`
 
@@ -155,6 +155,15 @@ _Required_: Yes
 
 _Type_: String
 
+`Project`
+
+The name of the project for your GitLab codebase.
+
+Conditional. Required if Provider is Gitlab
+
+_Required_: Conditional
+
+_Type_: String
 
 `Branch`
 
@@ -164,14 +173,14 @@ _Required_: No
 
 _Type_: String
 
-_Default_: `master`
+_Default_: master
 
 
 `Owner`
 
 The name of the GitHub user.
 
-Conditional. Required if `Provider` is `GitHub`
+Conditional. Required if Provider is GitHub
 
 _Required_: Conditional
 
@@ -182,7 +191,7 @@ _Type_: String
 
 It is the GitHub authentication token that allows Macro to perform operations on your GitHub repository. 
 
-Conditional. Required if `Provider` is `GitHub`
+Conditional. Required if Provider is GitHub | Gitlab
 
 _Required_: Conditional
 
@@ -196,15 +205,13 @@ _Required_: Yes
 
 _Type_: String
 
-_Example_: `path/to/file/template.yaml`
+_Example_: path/to/file/template.yaml
 
 `Parameters`
 
 The set value pairs that represent the parameters passed to Macro when the template is imported. Each parameter has a name corresponding to a parameter defined in the embedded template and a value representing the value that you want to set for the parameter.
 
-Conditional. Required if the nested stack requires input parameters.
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: Map of String
 
@@ -226,7 +233,7 @@ _Type_: List of [Tag](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserG
 
 `TimeoutInMinutes`
 
-The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to `[AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html)` for more informations.
+The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state. Refer to [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) for more informations.
 
 _Required_: No
 
@@ -312,38 +319,34 @@ Properties:
 
 Specifies whether to import the template inline or as [AWS::CloudFormation::Stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-stack.html) resource.
 
-If `Nested` mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
+If Nested mode is used Macro automatically uploads Template into S3 Bucket when `TemplateBucket`, `TemplateKey` or `Path` parameters are provided as String or by using the intrinsic function [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html). 
 
-If `Inline` mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the `Template::` prefix. 
+If Inline mode is used you can reference resource in imported Template using the intrinsic functions [Ref](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html) and [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html) with the _Template::_ prefix. 
 
-For example, you can obtain the Arn of a resource inside imported template using:
+For example, you can obtain the Arn of a resource inside imported template using GetAtt, you can reference resource inside imported template using Ref:
 
-```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
+- ```Fn::GetAtt: [ Template::TemplateName::LogicalName, attributeName ]```
 
-you can reference resource inside imported template using:
-
-```Ref: Template::TemplateName::LogicalName```
+- ```Ref: Template::TemplateName::LogicalName```
 
 Nested mode suppors all attributes you can use with AWS::CloudFormation::Stack while Inline mode supports DeletionPolicy, DependsOn, UpdatePolicy [Resource Attributes](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-product-attribute-reference.html) and [Conditions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html).
 
-You can define dependency to Template resource using Template:: prefix. 
+You can define dependency to Template resource using _Template::_ prefix. 
 
-```DependsOn: Template::TemplateName```
+- ```DependsOn: Template::TemplateName```
 
 _Required_: Yes
 
 _Type_: String
 
-_Allowed Values_:  `Inline | Nested`
+_Allowed Values_:  Inline | Nested
 
 
 `Bucket`
 
 The name of the S3 Bucket from where the template is dowloaded.
 
-Conditional. Required if `Provider` is `S3`
-
-_Required_: Conditional
+_Required_: Yes
 
 _Type_: String
 
@@ -352,9 +355,7 @@ _Type_: String
 
 The path from where the template is dowloaded.
 
-Conditional. Required if `Provider` is `S3`
-
-_Required_: Conditional
+_Required_: Yes
 
 _Type_: String
 
@@ -362,9 +363,7 @@ _Type_: String
 
 The set value pairs that represent the parameters passed to Macro when the template is imported. Each parameter has a name corresponding to a parameter defined in the embedded template and a value representing the value that you want to set for the parameter.
 
-Conditional. Required if the nested stack requires input parameters.
-
-_Required_: Conditional
+_Required_: No
 
 _Type_: Map of String
 
