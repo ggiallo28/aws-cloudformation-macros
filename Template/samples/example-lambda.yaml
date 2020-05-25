@@ -19,7 +19,7 @@ Parameters:
     Default: lambda/lambda-shutdown-instance.yml
   OAuthToken:
     Type: String
-    Default: YsfRzFo-Fa5HxhhCui_-
+    Default: f-R8ccD4V8zu_CYGz18Y
   Environment:
     Type: String
     Default: prod

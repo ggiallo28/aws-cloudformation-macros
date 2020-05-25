@@ -11,9 +11,6 @@ Parameters:
   BranchName:
     Type: String
     Default: master
-  BucketName:
-    Type: String
-    Default: macro-template-default-831650818513-us-east-1
   TemplateKey:
     Type: String
     Default: Template/sns-topics-template.yaml
@@ -68,7 +65,7 @@ Resources:
         - Key: TopicName
           Value: !GetAtt Template::SNSTopiInlineCondition::UrgentPriorityAlarm.TopicName
       TimeoutInMinutes: 1
-      TemplateBucket: !Ref BucketName
+      TemplateBucket: !Ref Template::DefaultBucket
       TemplatePrefix: !Ref TemplatePrefix
 
   SNSTopicNestedDefault:
@@ -84,16 +81,4 @@ Resources:
       Owner: !Ref GitHubUser
       Parameters:
         Name: 'sns-topic-template-github-nested-stack-default-bucket'
-        Environment: !Ref Environment
-
-  SNSTopicS3:
-    Type: Template::S3
-    Condition: CreateResources
-    DependsOn: Template::SNSTopiInlineCondition
-    Properties:
-      Mode: Inline
-      Bucket: !Ref BucketName
-      Key: !Ref TemplateKey
-      Parameters:
-        Name: 'sns-topic-template-s3-inline-stack'
         Environment: !Ref Environment

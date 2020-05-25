@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import traceback
+import urllib.parse
 
 from resources import *
 from loader import *

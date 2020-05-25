@@ -16,7 +16,7 @@ Parameters:
     Default: nlb-autoscaling/nlb-autoscaling.yaml
   GitLabToken:
     Type: String
-    Default: JeqznsSA98T48ev-SLFg
+    Default: f-R8ccD4V8zu_CYGz18Y
   Environment:
     Type: String
     Default: prod

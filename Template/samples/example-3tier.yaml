@@ -19,7 +19,7 @@ Parameters:
     Default: s3/s3.yaml
   Token:
     Type: String
-    Default: 2sePcsuzvBR9g7xrLmot
+    Default: f-R8ccD4V8zu_CYGz18Y
   Environment:
     Type: String
     Default: prod

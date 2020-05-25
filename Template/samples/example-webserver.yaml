@@ -13,7 +13,7 @@ Parameters:
     Default: alb-autoscaling-blue-green/webserver.yaml
   OAuthToken:
     Type: String
-    Default: M4by_B9o2Mc7fqeCEwwX
+    Default: f-R8ccD4V8zu_CYGz18Y
   Environment:
     Type: String
     Default: prod
